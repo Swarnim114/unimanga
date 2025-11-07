@@ -1,0 +1,9 @@
+@startuml
+
+class User {
+  - id : int
+  - name : String
+  
+
+}
+@enduml
