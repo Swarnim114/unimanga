@@ -1,1 +1,2 @@
-here there well be all the requirements
+- User 
+- login/register 
