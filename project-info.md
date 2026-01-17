@@ -219,26 +219,3 @@ Other Devices Synced
 * Multi-region deployment
 * ML-based personalization
 
----
-
-## 🧾 Conclusion
-
-UniManga is a **practical, finishable academic project** that demonstrates:
-
-* Real-world mobile app development
-* Distributed backend design
-* Core DevOps practices
-* Scalable system architecture
-
-The project intentionally focuses on **clarity, correctness, and syllabus alignment**, avoiding unnecessary overengineering while still meeting **~70–80% of course requirements**.
-
----
-
-If you want next, I can:
-
-* Create **separate submission reports** for DevOps / RN / HLD
-* Generate **architecture diagrams**
-* Write a **viva-ready explanation sheet**
-* Cut this down into a **1–2 page proposal**
-
-Tell me what you want next.

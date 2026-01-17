@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js"
 import jwt from "jsonwebtoken"
+import { initializeDefaultCategories } from "./category.controller.js";
 
 export const register = async (req , res) => {
     const {username , email , password} = req.body;
@@ -20,7 +21,21 @@ export const register = async (req , res) => {
             password: hashedPassword,
         });
 
-        res.status(201).json({ message: "User registered successfully", user: newUser });
+        // Initialize default categories for new user
+        await initializeDefaultCategories(newUser._id);
+
+        // Generate token
+        const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+        res.status(201).json({ 
+            message: "User registered successfully", 
+            user: {
+                id: newUser._id,
+                username: newUser.username,
+                email: newUser.email,
+            },
+            token,
+        });
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
     }
