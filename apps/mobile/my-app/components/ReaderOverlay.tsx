@@ -11,6 +11,7 @@ import {
 import { MangaMetadata } from '../utils/metadataExtractors';
 import { apiService, Category } from '../services/api.service';
 import CategorySelector from './CategorySelector';
+import { cleanMangaTitle, extractChapterNumber } from '../utils/mangaHelpers';
 
 interface ReaderOverlayProps {
   visible: boolean;
@@ -67,8 +68,12 @@ export default function ReaderOverlay({
       setAddingToLibrary(true);
       setShowCategorySelector(false);
 
+      // Clean the title and extract chapter number
+      const cleanedTitle = cleanMangaTitle(metadata.title);
+      const chapterNumber = extractChapterNumber(metadata.sourceUrl, metadata.title) || '0';
+
       await apiService.addMangaToLibrary({
-        title: metadata.title,
+        title: cleanedTitle || metadata.title, // Use cleaned title
         description: metadata.description,
         author: metadata.author,
         artist: metadata.artist,
@@ -82,10 +87,12 @@ export default function ReaderOverlay({
         lastChapterAdded: metadata.lastChapterAdded,
         rating: metadata.rating,
         categoryId,
-        readingStatus: 'plan-to-read',
+        readingStatus: 'reading',
+        currentChapter: chapterNumber, // Use extracted chapter number
+        lastReadUrl: metadata.sourceUrl,
       });
 
-      Alert.alert('Success', `${metadata.title} added to your library!`);
+      Alert.alert('Success', `${cleanedTitle || metadata.title} added to your library!`);
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -234,7 +241,9 @@ export default function ReaderOverlay({
               {metadata.totalChapters !== undefined && metadata.totalChapters > 0 && (
                 <View className="bg-white/5 px-4 py-2 rounded-lg mr-2 mb-2">
                   <Text className="text-white/60 text-xs">Chapters</Text>
-                  <Text className="text-white font-semibold">{metadata.totalChapters}</Text>
+                  <Text className="text-white font-semibold">
+                    {metadata.totalChapters}
+                  </Text>
                 </View>
               )}
 

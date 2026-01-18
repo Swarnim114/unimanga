@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import ReaderOverlay from '../../components/ReaderOverlay';
+import { apiService } from '../../services/api.service';
 import { 
   getExtractorForUrl, 
   isMangaDetailPage, 
   parseMetadata,
   MangaMetadata 
 } from '../../utils/metadataExtractors';
+import { extractChapterNumber } from '../../utils/mangaHelpers';
 
 export default function BrowserScreen() {
   const params = useLocalSearchParams();
@@ -20,11 +22,23 @@ export default function BrowserScreen() {
   const [showOverlay, setShowOverlay] = useState(false);
   const [extractedMetadata, setExtractedMetadata] = useState<MangaMetadata | null>(null);
   
-  const webViewRef = React.useRef<WebView>(null);
+  const webViewRef = useRef<WebView>(null);
+  const progressUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const websiteName = params.name as string || 'Browser';
   const websiteUrl = params.url as string;
   const websiteColor = params.color as string || '#6366F1';
+  const userMangaId = params.userMangaId as string;
+  const mangaId = params.mangaId as string;
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (progressUpdateTimeoutRef.current) {
+        clearTimeout(progressUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleBack = () => {
     if (canGoBack && webViewRef.current) {
@@ -110,8 +124,41 @@ export default function BrowserScreen() {
     setCanGoForward(navState.canGoForward);
     setCurrentUrl(navState.url);
 
+    // Update reading progress if userMangaId is provided
+    if (userMangaId && navState.url) {
+      // Clear any pending progress update
+      if (progressUpdateTimeoutRef.current) {
+        clearTimeout(progressUpdateTimeoutRef.current);
+      }
+
+      // Debounce progress updates (wait 2 seconds after user stops navigating)
+      progressUpdateTimeoutRef.current = setTimeout(async () => {
+        try {
+          // Extract chapter number from URL
+          const chapterNumber = extractChapterNumber(navState.url);
+          
+          if (chapterNumber) {
+            console.log('Updating reading progress - Chapter:', chapterNumber, 'URL:', navState.url);
+            
+            await apiService.updateMangaProgress(userMangaId, {
+              lastReadUrl: navState.url,
+              currentChapter: chapterNumber,
+              status: 'reading',
+            });
+            
+            console.log('Progress updated successfully');
+          }
+          // Don't update progress for series pages (they don't have chapter numbers)
+          // This avoids confusion when briefly visiting series pages to fetch metadata
+        } catch (error) {
+          console.error('Failed to update reading progress:', error);
+        }
+      }, 2000);
+    }
+
     // Check if we're on a manga detail page and extract metadata
-    if (isMangaDetailPage(navState.url)) {
+    // But don't extract if overlay is already showing (user manually triggered extraction)
+    if (isMangaDetailPage(navState.url) && !showOverlay) {
       const extractor = getExtractorForUrl(navState.url);
       if (extractor && webViewRef.current) {
         // Delay extraction to ensure page is fully loaded (increased delay)

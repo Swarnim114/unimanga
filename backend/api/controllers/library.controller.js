@@ -25,7 +25,9 @@ export const addMangaToLibrary = async (req, res) => {
       rating,
       // Library fields
       categoryId, 
-      status: readingStatus 
+      status: readingStatus,
+      currentChapter,
+      lastReadUrl 
     } = req.body;
 
     let manga;
@@ -101,6 +103,9 @@ export const addMangaToLibrary = async (req, res) => {
       category: categoryId,
       status: readingStatus || 'plan-to-read',
       startedAt: readingStatus === 'reading' ? new Date() : undefined,
+      currentChapter: currentChapter || '0',
+      lastReadUrl: lastReadUrl || sourceUrl,
+      lastReadAt: new Date(),
     });
 
     const populatedUserManga = await UserManga.findById(userManga._id)
@@ -142,7 +147,13 @@ export const getUserLibrary = async (req, res) => {
     if (favorite === 'true') filter.favorite = true;
 
     const library = await UserManga.find(filter)
-      .populate('manga')
+      .populate({
+        path: 'manga',
+        populate: {
+          path: 'sourceWebsite',
+          model: 'Website'
+        }
+      })
       .populate('category')
       .sort({ lastReadAt: -1, updatedAt: -1 });
 
@@ -160,7 +171,7 @@ export const updateMangaProgress = async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
-    const { currentChapter, totalChaptersRead, progress, status, chapterProgress } = req.body;
+    const { currentChapter, totalChaptersRead, progress, status, chapterProgress, lastReadUrl } = req.body;
 
     const updateData = {
       lastReadAt: new Date(),
@@ -169,6 +180,7 @@ export const updateMangaProgress = async (req, res) => {
     if (currentChapter !== undefined) updateData.currentChapter = currentChapter;
     if (totalChaptersRead !== undefined) updateData.totalChaptersRead = totalChaptersRead;
     if (progress !== undefined) updateData.progress = progress;
+    if (lastReadUrl) updateData.lastReadUrl = lastReadUrl;
     if (status) {
       updateData.status = status;
       if (status === 'reading' && !updateData.startedAt) {
