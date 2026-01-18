@@ -7,8 +7,8 @@
 export function cleanMangaTitle(title: string): string {
   if (!title) return '';
   
-  // Remove website suffixes like " - Asura Scans", " - MangaDex", etc
-  let cleaned = title.replace(/\s*[-–—]\s*(Asura\s*Scans?|MangaDex|MangaPlus|Webtoons?|MangaFire|MangaKakalot|Manga\s*Fire|Manga\s*Kakalot)\s*$/i, '');
+  // Remove website suffixes like " - Asura Scans", " - WeebCentral", etc
+  let cleaned = title.replace(/\s*[-–—]\s*(Asura\s*Scans?|Webtoons?|MangaFire|Manga\s*Fire|WeebCentral|Weeb\s*Central)\s*$/i, '');
   
   // Remove chapter indicators at the end
   // Matches: "Chapter 194", "Ch. 194", "Ch 194", "Episode 50", "Ep. 50", etc.
@@ -21,7 +21,7 @@ export function cleanMangaTitle(title: string): string {
  * Extract chapter number from URL or title
  * Examples:
  * "https://asuracomic.net/series/swordmasters-youngest-son-b62b5a15/chapter/194" -> "194"
- * "https://mangadex.org/chapter/abc123" -> null (needs title parsing)
+ * "https://weebcentral.com/chapter/abc123" -> null (needs title parsing)
  * "Chapter 194" -> "194"
  */
 export function extractChapterNumber(url: string, title?: string): string | null {
@@ -91,10 +91,7 @@ export function getSeriesUrl(url: string): string {
     if (match) return match[1];
   }
   
-  // MangaDex pattern: chapter UUID to manga UUID (would need API)
-  // For now, return original URL
-  
-  // MangaPlus, MangaFire, etc. - add patterns as needed
+  // WeebCentral, MangaFire, etc. - add patterns as needed
   
   return url;
 }

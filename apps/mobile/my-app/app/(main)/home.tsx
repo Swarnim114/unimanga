@@ -1,35 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StatusBar, ScrollView, ActivityIndicator, Image, Alert, Modal } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { View, Text, TouchableOpacity, StatusBar, ScrollView, ActivityIndicator, Image, Modal } from 'react-native';
+import { useRouter } from 'expo-router';
 import { authService } from '../../services/auth.service';
-import { apiService, Website, UserManga } from '../../services/api.service';
+import { apiService, Website } from '../../services/api.service';
 import { cleanMangaTitle, formatChapterDisplay } from '../../utils/mangaHelpers';
+import { useLibrary, useMangaActions, useMangaMenu } from '../../hooks/useLibrary';
+import { Toast, useToast } from '../../components/Toast';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'sources' | 'library'>('sources');
   const [websites, setWebsites] = useState<Website[]>([]);
-  const [library, setLibrary] = useState<UserManga[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [loadingWebsites, setLoadingWebsites] = useState(true);
-  const [loadingLibrary, setLoadingLibrary] = useState(true);
-  const [selectedManga, setSelectedManga] = useState<UserManga | null>(null);
-  const [showOptionsModal, setShowOptionsModal] = useState(false);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
+
+  // Use custom hooks for library management
+  const library = useLibrary();
+  const mangaMenu = useMangaMenu();
+  const mangaActions = useMangaActions(() => {
+    library.loadLibrary();
+    mangaMenu.closeAll();
+    showToast('Action completed successfully', 'success');
+  });
 
   useEffect(() => {
     loadWebsites();
-    loadLibrary();
-    loadCategories();
   }, []);
-
-  // Reload library when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      loadLibrary();
-    }, [])
-  );
 
   const loadWebsites = async () => {
     try {
@@ -40,27 +36,6 @@ export default function HomeScreen() {
       console.error('Failed to load websites:', error);
     } finally {
       setLoadingWebsites(false);
-    }
-  };
-
-  const loadLibrary = async () => {
-    try {
-      setLoadingLibrary(true);
-      const data = await apiService.getUserLibrary();
-      setLibrary(data);
-    } catch (error) {
-      console.error('Failed to load library:', error);
-    } finally {
-      setLoadingLibrary(false);
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const data = await apiService.getCategories();
-      setCategories(data);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
     }
   };
 
@@ -82,7 +57,7 @@ export default function HomeScreen() {
     });
   };
 
-  const handleOpenManga = (item: UserManga) => {
+  const handleOpenManga = (item: typeof library.filteredLibrary[0]) => {
     // Open browser at the last read URL or the manga's main URL
     const urlToOpen = item.lastReadUrl || item.manga.sourceUrl;
     const websiteInfo = typeof item.manga.sourceWebsite === 'object' 
@@ -101,67 +76,22 @@ export default function HomeScreen() {
     });
   };
 
-  // Filter library by selected category
-  const filteredLibrary = selectedCategoryId 
-    ? library.filter(item => item.category._id === selectedCategoryId)
-    : library;
-
-  // Count manga per category
-  const getCategoryCount = (categoryId: string) => {
-    return library.filter(item => item.category._id === categoryId).length;
-  };
-
-  const handleLongPressManga = (item: UserManga) => {
-    setSelectedManga(item);
-    setShowOptionsModal(true);
-  };
-
   const handleDeleteManga = async () => {
-    if (!selectedManga) return;
-
-    Alert.alert(
-      'Delete Manga',
-      `Are you sure you want to remove "${cleanMangaTitle(selectedManga.manga.title)}" from your library?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await apiService.deleteMangaFromLibrary(selectedManga._id);
-              setShowOptionsModal(false);
-              setSelectedManga(null);
-              await loadLibrary();
-              Alert.alert('Success', 'Manga removed from library');
-            } catch (error) {
-              console.error('Failed to delete manga:', error);
-              Alert.alert('Error', 'Failed to remove manga from library');
-            }
-          },
-        },
-      ]
+    if (!mangaMenu.selectedManga) return;
+    await mangaActions.deleteManga(
+      mangaMenu.selectedManga._id,
+      cleanMangaTitle(mangaMenu.selectedManga.manga.title)
     );
   };
 
-  const handleChangeCategory = () => {
-    setShowOptionsModal(false);
-    setShowCategoryModal(true);
-  };
-
   const handleCategorySelect = async (categoryId: string) => {
-    if (!selectedManga) return;
-
-    try {
-      await apiService.updateMangaCategory(selectedManga._id, categoryId);
-      setShowCategoryModal(false);
-      setSelectedManga(null);
-      await loadLibrary();
-      Alert.alert('Success', 'Category updated');
-    } catch (error) {
-      console.error('Failed to update category:', error);
-      Alert.alert('Error', 'Failed to update category');
-    }
+    if (!mangaMenu.selectedManga) return;
+    await mangaActions.changeMangaCategory(
+      mangaMenu.selectedManga._id,
+      categoryId,
+      cleanMangaTitle(mangaMenu.selectedManga.manga.title)
+    );
+    mangaMenu.closeAll();
   };
 
   return (
@@ -290,73 +220,73 @@ export default function HomeScreen() {
               {/* All Categories */}
               <TouchableOpacity
                 className={`mr-2 px-4 py-2 rounded-full ${
-                  selectedCategoryId === null 
+                  library.selectedCategory === 'all' 
                     ? 'bg-[#6366F1]' 
                     : 'bg-[#2C2C2E]'
                 }`}
-                onPress={() => setSelectedCategoryId(null)}
+                onPress={() => library.setSelectedCategory('all')}
                 activeOpacity={0.8}
               >
                 <Text className={`font-semibold text-sm ${
-                  selectedCategoryId === null 
+                  library.selectedCategory === 'all' 
                     ? 'text-white' 
                     : 'text-gray-400'
                 }`}>
-                  All ({library.length})
+                  All ({library.library.length})
                 </Text>
               </TouchableOpacity>
 
               {/* Individual Categories */}
-              {categories.map((category) => (
+              {library.categories.map((category) => (
                 <TouchableOpacity
                   key={category._id}
                   className={`mr-2 px-4 py-2 rounded-full ${
-                    selectedCategoryId === category._id 
+                    library.selectedCategory === category._id 
                       ? 'bg-[#6366F1]' 
                       : 'bg-[#2C2C2E]'
                   }`}
-                  onPress={() => setSelectedCategoryId(category._id)}
+                  onPress={() => library.setSelectedCategory(category._id)}
                   activeOpacity={0.8}
                 >
                   <Text className={`font-semibold text-sm ${
-                    selectedCategoryId === category._id 
+                    library.selectedCategory === category._id 
                       ? 'text-white' 
                       : 'text-gray-400'
                   }`}>
-                    {category.name} ({getCategoryCount(category._id)})
+                    {category.name} ({library.getCategoryCount(category._id)})
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
             <Text className="text-gray-400 text-sm mb-4">
-              {filteredLibrary.length} manga {selectedCategoryId ? 'in this category' : 'in your collection'}
+              {library.filteredLibrary.length} manga {library.selectedCategory !== 'all' ? 'in this category' : 'in your collection'}
             </Text>
             
-            {loadingLibrary ? (
+            {library.loading ? (
               <View className="py-12 items-center">
                 <ActivityIndicator size="large" color="#6366F1" />
                 <Text className="text-gray-400 mt-4">Loading library...</Text>
               </View>
-            ) : filteredLibrary.length === 0 ? (
+            ) : library.filteredLibrary.length === 0 ? (
               <View className="items-center justify-center py-12">
                 <Text className="text-gray-400 text-center mb-2">
-                  {selectedCategoryId ? 'No manga in this category' : 'Your library is empty'}
+                  {library.selectedCategory !== 'all' ? 'No manga in this category' : 'Your library is empty'}
                 </Text>
                 <Text className="text-gray-500 text-sm text-center">
-                  {selectedCategoryId 
+                  {library.selectedCategory !== 'all' 
                     ? 'Add manga to this category or select another' 
                     : 'Browse sources and add manga to get started'}
                 </Text>
               </View>
             ) : (
-              filteredLibrary.map((item) => (
+              library.filteredLibrary.map((item) => (
                 <TouchableOpacity
                   key={item._id}
                   className="bg-[#2C2C2E] rounded-xl mb-3 overflow-hidden"
                   activeOpacity={0.8}
                   onPress={() => handleOpenManga(item)}
-                  onLongPress={() => handleLongPressManga(item)}
+                  onLongPress={() => mangaMenu.openOptionsMenu(item)}
                 >
                   <View className="flex-row p-4">
                     {/* Cover Image or Placeholder */}
@@ -403,26 +333,26 @@ export default function HomeScreen() {
 
       {/* Options Modal */}
       <Modal
-        visible={showOptionsModal}
+        visible={mangaMenu.showOptionsMenu}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowOptionsModal(false)}
+        onRequestClose={mangaMenu.closeOptionsMenu}
       >
         <TouchableOpacity
           className="flex-1 bg-black/50 justify-center items-center"
           activeOpacity={1}
-          onPress={() => setShowOptionsModal(false)}
+          onPress={mangaMenu.closeOptionsMenu}
         >
           <View className="bg-[#2C2C2E] rounded-2xl w-4/5 overflow-hidden" onStartShouldSetResponder={() => true}>
             <View className="p-4 border-b border-white/10">
               <Text className="text-white font-bold text-lg" numberOfLines={2}>
-                {selectedManga && cleanMangaTitle(selectedManga.manga.title)}
+                {mangaMenu.selectedManga && cleanMangaTitle(mangaMenu.selectedManga.manga.title)}
               </Text>
             </View>
 
             <TouchableOpacity
               className="px-6 py-4 border-b border-white/5 active:bg-white/5"
-              onPress={handleChangeCategory}
+              onPress={mangaMenu.openCategoryModal}
               activeOpacity={0.8}
             >
               <Text className="text-white text-base">📁 Change Category</Text>
@@ -438,7 +368,7 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               className="px-6 py-4 border-t border-white/10 active:bg-white/5"
-              onPress={() => setShowOptionsModal(false)}
+              onPress={mangaMenu.closeOptionsMenu}
               activeOpacity={0.8}
             >
               <Text className="text-gray-400 text-base text-center">Cancel</Text>
@@ -449,15 +379,15 @@ export default function HomeScreen() {
 
       {/* Category Selection Modal */}
       <Modal
-        visible={showCategoryModal}
+        visible={mangaMenu.showCategoryModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowCategoryModal(false)}
+        onRequestClose={mangaMenu.closeCategoryModal}
       >
         <TouchableOpacity
           className="flex-1 bg-black/50 justify-center items-center"
           activeOpacity={1}
-          onPress={() => setShowCategoryModal(false)}
+          onPress={mangaMenu.closeCategoryModal}
         >
           <View className="bg-[#2C2C2E] rounded-2xl w-4/5 max-h-96 overflow-hidden" onStartShouldSetResponder={() => true}>
             <View className="p-4 border-b border-white/10">
@@ -465,7 +395,7 @@ export default function HomeScreen() {
             </View>
 
             <ScrollView className="max-h-80">
-              {categories.map((category) => (
+              {library.categories.map((category) => (
                 <TouchableOpacity
                   key={category._id}
                   className="px-6 py-4 border-b border-white/5 active:bg-white/5"
@@ -474,7 +404,7 @@ export default function HomeScreen() {
                 >
                   <View className="flex-row items-center justify-between">
                     <Text className="text-white text-base">{category.name}</Text>
-                    {selectedManga?.category._id === category._id && (
+                    {mangaMenu.selectedManga?.category._id === category._id && (
                       <Text className="text-[#6366F1]">✓</Text>
                     )}
                   </View>
@@ -484,7 +414,7 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               className="px-6 py-4 border-t border-white/10 active:bg-white/5"
-              onPress={() => setShowCategoryModal(false)}
+              onPress={mangaMenu.closeCategoryModal}
               activeOpacity={0.8}
             >
               <Text className="text-gray-400 text-base text-center">Cancel</Text>
@@ -492,6 +422,13 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
     </View>
   );
 }

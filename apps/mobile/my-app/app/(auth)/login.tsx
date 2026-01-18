@@ -8,20 +8,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authService } from '../../services/auth.service';
+import { Ionicons } from '@expo/vector-icons';
+import { Toast, useToast } from '../../components/Toast';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isEmailFocused, setIsEmailFocused] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showToast('Please fill in all fields', 'error');
       return;
     }
 
@@ -29,11 +35,14 @@ export default function LoginScreen() {
     try {
       const response = await authService.login(email, password);
       console.log('Login successful!', response.message);
-      router.replace('/(main)/home');
+      showToast('Login successful!', 'success');
+      setTimeout(() => {
+        router.replace('/(main)/home');
+      }, 500);
     } catch (error) {
       console.error('Login error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Login Failed', errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -61,30 +70,60 @@ export default function LoginScreen() {
             {/* Email Input */}
             <View className="mb-4">
               <Text className="text-gray-400 text-sm mb-2 ml-1">Email</Text>
-              <TextInput
-                className="bg-[#2C2C2E] text-white px-4 py-4 rounded-xl text-base"
-                placeholder="Enter your email"
-                placeholderTextColor="#8E8E93"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
+              <View className={`bg-[#2C2C2E] rounded-xl ${
+                isEmailFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
+              }`}>
+                <TextInput
+                  className="text-white px-4 py-4 text-base"
+                  placeholder="Enter your email"
+                  placeholderTextColor="#8E8E93"
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setIsEmailFocused(true)}
+                  onBlur={() => setIsEmailFocused(false)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                />
+              </View>
             </View>
 
             {/* Password Input */}
             <View className="mb-6">
               <Text className="text-gray-400 text-sm mb-2 ml-1">Password</Text>
-              <TextInput
-                className="bg-[#2C2C2E] text-white px-4 py-4 rounded-xl text-base"
-                placeholder="Enter your password"
-                placeholderTextColor="#8E8E93"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View className={`bg-[#2C2C2E] rounded-xl flex-row items-center ${
+                isPasswordFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
+              }`}>
+                <TextInput
+                  className="text-white px-4 py-4 text-base flex-1"
+                  placeholder="Enter your password"
+                  placeholderTextColor="#8E8E93"
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setIsPasswordFocused(true)}
+                  onBlur={() => setIsPasswordFocused(false)}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  textContentType="password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                  enablesReturnKeyAutomatically
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  className="px-4 py-2"
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color="#8E8E93"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Forgot Password */}
@@ -122,6 +161,13 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
     </View>
   );
 }
