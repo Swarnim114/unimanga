@@ -35,7 +35,7 @@ export interface Manga {
   coverImage?: string;
   genres: string[];
   status: 'ongoing' | 'completed' | 'hiatus' | 'cancelled';
-  sourceWebsite: string;
+  sourceWebsite: Website | string;
   sourceUrl: string;
   totalChapters: number;
   lastChapterAdded?: string;
@@ -64,6 +64,7 @@ export interface UserManga {
   currentChapter: string;
   totalChaptersRead: number;
   progress: number;
+  lastReadUrl?: string;
   status: 'reading' | 'plan-to-read' | 'completed' | 'on-hold' | 'dropped';
   favorite: boolean;
   startedAt?: string;
@@ -125,6 +126,8 @@ export const apiService = {
     rating?: number;
     categoryId: string;
     readingStatus?: 'reading' | 'plan-to-read' | 'completed' | 'on-hold' | 'dropped';
+    currentChapter?: string;
+    lastReadUrl?: string;
   }): Promise<UserManga> {
     try {
       const config = await getAuthHeaders();
@@ -185,6 +188,44 @@ export const apiService = {
       await axios.delete(`${API_BASE_URL}/categories/${id}`, config);
     } catch (error) {
       console.error('Error deleting category:', error);
+      throw error;
+    }
+  },
+
+  async updateMangaProgress(id: string, data: {
+    currentChapter?: string;
+    lastReadUrl?: string;
+    totalChaptersRead?: number;
+    progress?: number;
+    status?: 'reading' | 'plan-to-read' | 'completed' | 'on-hold' | 'dropped';
+  }): Promise<UserManga> {
+    try {
+      const config = await getAuthHeaders();
+      const response = await axios.put(`${API_BASE_URL}/library/${id}/progress`, data, config);
+      return response.data.userManga;
+    } catch (error) {
+      console.error('Error updating manga progress:', error);
+      throw error;
+    }
+  },
+
+  async deleteMangaFromLibrary(id: string): Promise<void> {
+    try {
+      const config = await getAuthHeaders();
+      await axios.delete(`${API_BASE_URL}/library/${id}`, config);
+    } catch (error) {
+      console.error('Error deleting manga from library:', error);
+      throw error;
+    }
+  },
+
+  async updateMangaCategory(id: string, categoryId: string): Promise<UserManga> {
+    try {
+      const config = await getAuthHeaders();
+      const response = await axios.put(`${API_BASE_URL}/library/${id}/category`, { categoryId }, config);
+      return response.data.userManga;
+    } catch (error) {
+      console.error('Error updating manga category:', error);
       throw error;
     }
   },

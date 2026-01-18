@@ -27,6 +27,9 @@ const userMangaSchema = new mongoose.Schema({
     type: Number, // Percentage (0-100)
     default: 0,
   },
+  lastReadUrl: {
+    type: String, // Exact URL where user was reading
+  },
   status: {
     type: String,
     enum: ['reading', 'completed', 'on-hold', 'dropped', 'plan-to-read'],
