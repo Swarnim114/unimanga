@@ -5,6 +5,16 @@
  * This ensures consistent behavior across all manga website extractors.
  */
 
+import { MangaMetadata } from './types';
+
+/**
+ * Validation result interface
+ */
+export interface ValidationResult {
+  isValid: boolean;
+  errors?: string[];
+}
+
 /**
  * Abstract base class for all website adapters
  * 
@@ -20,7 +30,7 @@
  */
 export abstract class BaseWebsiteAdapter {
   /**
-   * Get the name of the website (e.g., "MangaDex")
+   * Get the name of the website (e.g., "AsuraScans")
    */
   abstract getName(): string;
 
@@ -64,9 +74,48 @@ export abstract class BaseWebsiteAdapter {
    * Default implementation checks for required fields.
    * 
    * @param metadata - The extracted metadata object
-   * @returns true if metadata is valid
+   * @returns ValidationResult with isValid flag and optional errors
    */
-  validateMetadata(metadata: any): boolean {
-    return !!(metadata?.title && metadata?.sourceUrl && metadata?.sourceWebsite);
+  validateMetadata(metadata: any): ValidationResult {
+    const errors: string[] = [];
+
+    if (!metadata?.title) {
+      errors.push('Missing required field: title');
+    }
+    if (!metadata?.sourceUrl) {
+      errors.push('Missing required field: sourceUrl');
+    }
+    if (!metadata?.sourceWebsite) {
+      errors.push('Missing required field: sourceWebsite');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors: errors.length > 0 ? errors : undefined,
+    };
+  }
+
+  /**
+   * Detect if the URL is a chapter page (not a series page)
+   * 
+   * @param url - The URL to check
+   * @returns true if this is a chapter page
+   */
+  isChapterPage(url: string): boolean {
+    // Common patterns for chapter pages
+    return /\/(chapter|ch|episode|ep|read)\/\d+/i.test(url);
+  }
+
+  /**
+   * Extract series URL from a chapter URL
+   * Override this for website-specific logic
+   * 
+   * @param chapterUrl - The chapter page URL
+   * @returns The series page URL, or null if cannot be determined
+   */
+  getSeriesUrlFromChapter(chapterUrl: string): string | null {
+    // Default implementation: remove chapter path
+    const match = chapterUrl.match(/(.*)\/(chapter|ch|episode|ep|read)\/\d+/i);
+    return match ? match[1] : null;
   }
 }

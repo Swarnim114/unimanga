@@ -1,0 +1,228 @@
+/**
+ * MetadataService - Facade for Metadata Extraction
+ * 
+ * Provides a clean, simple API for extracting manga metadata from websites.
+ * Uses the Factory pattern internally to select the appropriate adapter.
+ * Handles parsing, validation, and error recovery.
+ * 
+ * @example
+ * const service = MetadataService.getInstance();
+ * const adapter = service.getExtractorForUrl(url);
+ * if (adapter) {
+ *   const script = service.getInjectionScript(url);
+ *   // Inject script into WebView
+ * }
+ */
+
+import { extractorFactory } from './ExtractorFactory';
+import { BaseWebsiteAdapter } from './BaseWebsiteAdapter';
+import { MangaMetadata } from './types';
+
+export class MetadataService {
+  private static instance: MetadataService;
+
+  private constructor() {}
+
+  /**
+   * Get singleton instance
+   */
+  static getInstance(): MetadataService {
+    if (!MetadataService.instance) {
+      MetadataService.instance = new MetadataService();
+    }
+    return MetadataService.instance;
+  }
+
+  /**
+   * Get the appropriate extractor adapter for a given URL
+   * 
+   * @param url - The URL to find an adapter for
+   * @returns The matching adapter, or null if no adapter can handle the URL
+   */
+  getExtractorForUrl(url: string): BaseWebsiteAdapter | null {
+    try {
+      return extractorFactory.getAdapterForUrl(url);
+    } catch (error) {
+      console.error('[MetadataService] Error getting adapter for URL:', url, error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if the URL is a manga detail page that can be extracted
+   * 
+   * @param url - The URL to check
+   * @returns true if an adapter exists for this URL
+   */
+  isMangaDetailPage(url: string): boolean {
+    const adapter = this.getExtractorForUrl(url);
+    if (!adapter) return false;
+    
+    // If it's a chapter page, we can still handle it (by extracting from series page)
+    if (adapter.isChapterPage(url)) {
+      return true;
+    }
+    
+    // Otherwise, check if adapter can handle this URL
+    return extractorFactory.canHandle(url);
+  }
+
+  /**
+   * Get the injection script for a given URL
+   * Wraps the adapter's script to handle WebView messaging
+   * 
+   * @param url - The URL to get the injection script for
+   * @returns The complete injection script, or null if no adapter found
+   */
+  getInjectionScript(url: string): string | null {
+    const adapter = this.getExtractorForUrl(url);
+    if (!adapter) {
+      console.warn('[MetadataService] No adapter found for URL:', url);
+      return null;
+    }
+
+    // If this is a chapter page, navigate to series page first
+    if (adapter.isChapterPage(url)) {
+      const seriesUrl = adapter.getSeriesUrlFromChapter(url);
+      if (seriesUrl) {
+        console.log('[MetadataService] Chapter page detected, redirecting to series page:', seriesUrl);
+        // Return script to navigate to series page and extract from there
+        return `
+          (function() {
+            try {
+              // Navigate to series page
+              window.location.href = '${seriesUrl}';
+              return JSON.stringify({ 
+                _redirecting: true, 
+                message: 'Redirecting to series page...' 
+              });
+            } catch(e) {
+              return JSON.stringify({ error: e.message });
+            }
+          })();
+        `;
+      }
+    }
+
+    const baseScript = adapter.getInjectionScript();
+    
+    // Wrap the adapter's script to handle WebView communication
+    return `
+      (function() {
+        try {
+          const result = ${baseScript};
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(result);
+          }
+          return result;
+        } catch(e) {
+          console.error('[MetadataExtraction] Error:', e);
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ error: e.message }));
+          }
+          return JSON.stringify({ error: e.message });
+        }
+      })();
+      true;
+    `;
+  }
+
+  /**
+   * Parse and validate metadata from WebView message
+   * 
+   * @param jsonString - The JSON string received from the WebView
+   * @returns Parsed and validated metadata, or null if invalid
+   */
+  parseMetadata(jsonString: string): MangaMetadata | null {
+    try {
+      console.log('[MetadataService] Parsing metadata...');
+      
+      if (!jsonString || typeof jsonString !== 'string') {
+        console.error('[MetadataService] Invalid input: not a string');
+        return null;
+      }
+      
+      const data = JSON.parse(jsonString);
+      
+      // 🐛 DEBUG MODE: If this is debug output, log it and return null
+      if (data._isDebugAdapter) {
+        console.log('==========================================');
+        console.log('🐛 DEBUG ADAPTER OUTPUT:');
+        console.log('==========================================');
+        console.log(JSON.stringify(data, null, 2));
+        console.log('==========================================');
+        return null;
+      }
+      
+      // Handle redirection response (from chapter pages)
+      if (data._redirecting) {
+        console.log('[MetadataService]', data.message || 'Redirecting...');
+        return null;
+      }
+      
+      if (data.error) {
+        console.error('[MetadataService] Extraction error from page:', data.error);
+        return null;
+      }
+      
+      // Validate required fields
+      if (!data.title) {
+        console.error('[MetadataService] No title found in extracted data');
+        return null;
+      }
+      
+      if (!data.sourceUrl || !data.sourceWebsite) {
+        console.error('[MetadataService] Missing required fields (sourceUrl or sourceWebsite)');
+        return null;
+      }
+
+      // Additional validation using adapter if available
+      const adapter = this.getExtractorForUrl(data.sourceUrl);
+      if (adapter) {
+        const validationResult = adapter.validateMetadata(data);
+        if (!validationResult.isValid) {
+          console.error('[MetadataService] Metadata validation failed:', validationResult.errors);
+          // Still return the data but log the issues
+        }
+      }
+      
+      console.log('[MetadataService] Successfully parsed metadata for:', data.title);
+      return data as MangaMetadata;
+    } catch (error) {
+      console.error('[MetadataService] Failed to parse metadata JSON:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get all registered adapters
+   * Useful for debugging or showing supported websites
+   * 
+   * @returns Array of all registered adapters
+   */
+  getAllAdapters(): BaseWebsiteAdapter[] {
+    return extractorFactory.getAllAdapters();
+  }
+
+  /**
+   * Get supported website names
+   * 
+   * @returns Array of website names that can be extracted
+   */
+  getSupportedWebsites(): string[] {
+    return this.getAllAdapters().map(adapter => adapter.getName());
+  }
+
+  /**
+   * Get adapter by website name
+   * 
+   * @param name - The name of the website
+   * @returns The matching adapter, or null if not found
+   */
+  getAdapterByName(name: string): BaseWebsiteAdapter | null {
+    return extractorFactory.getAdapterByName(name);
+  }
+}
+
+// Export singleton instance
+export const metadataService = MetadataService.getInstance();

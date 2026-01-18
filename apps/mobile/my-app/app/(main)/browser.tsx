@@ -1,215 +1,69 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import ReaderOverlay from '../../components/ReaderOverlay';
-import { apiService } from '../../services/api.service';
+import { metadataService } from '../../utils/extractors/MetadataService';
 import { 
-  getExtractorForUrl, 
-  isMangaDetailPage, 
-  parseMetadata,
-  MangaMetadata 
-} from '../../utils/metadataExtractors';
-import { extractChapterNumber } from '../../utils/mangaHelpers';
+  useWebViewNavigation, 
+  useMetadataExtraction, 
+  useProgressTracking 
+} from '../../hooks/useWebView';
 
 export default function BrowserScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [canGoForward, setCanGoForward] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState('');
-  const [showOverlay, setShowOverlay] = useState(false);
-  const [extractedMetadata, setExtractedMetadata] = useState<MangaMetadata | null>(null);
-  
   const webViewRef = useRef<WebView>(null);
-  const progressUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Component state
+  const [showOverlay, setShowOverlay] = useState(false);
 
+  // URL params
   const websiteName = params.name as string || 'Browser';
   const websiteUrl = params.url as string;
   const websiteColor = params.color as string || '#6366F1';
   const userMangaId = params.userMangaId as string;
-  const mangaId = params.mangaId as string;
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (progressUpdateTimeoutRef.current) {
-        clearTimeout(progressUpdateTimeoutRef.current);
-      }
-    };
-  }, []);
+  // Custom hooks for separation of concerns
+  const navigation = useWebViewNavigation(webViewRef);
+  const metadata = useMetadataExtraction(webViewRef, navigation.currentUrl, showOverlay);
+  const progress = useProgressTracking(userMangaId);
 
-  const handleBack = () => {
-    if (canGoBack && webViewRef.current) {
-      webViewRef.current.goBack();
-    }
+  // Handle navigation changes
+  const handleNavigationStateChange = (navState: any) => {
+    navigation.handleNavigationStateChange(navState);
+    progress.updateProgress(navState.url);
   };
 
-  const handleForward = () => {
-    if (canGoForward && webViewRef.current) {
-      webViewRef.current.goForward();
-    }
-  };
-
-  const handleRefresh = () => {
-    if (webViewRef.current) {
-      webViewRef.current.reload();
-    }
-  };
-
+  // Handle "+ Library" button click
   const handleAddToLibrary = async () => {
-    if (!currentUrl) return;
+    if (!navigation.currentUrl) return;
 
-    // Check if current page is a manga detail page
-    if (!isMangaDetailPage(currentUrl)) {
+    // Check if current page is supported
+    if (!metadataService.isMangaDetailPage(navigation.currentUrl)) {
       alert('Please navigate to a manga detail page first');
       return;
     }
 
     // Show overlay if we already have valid metadata
-    if (extractedMetadata && extractedMetadata.title) {
+    if (metadata.extractedMetadata?.title) {
       setShowOverlay(true);
       return;
     }
 
-    // Get the appropriate extractor and extract metadata
-    const extractor = getExtractorForUrl(currentUrl);
-    if (!extractor) {
-      alert('This website is not supported yet');
-      return;
-    }
-
-    console.log('Manually extracting metadata...');
-
-    try {
-      // Extract metadata with immediate execution (no delay)
-      const baseScript = extractor.getInjectionScript();
-      const script = `
-        (function() {
-          try {
-            const result = ${baseScript};
-            if (window.ReactNativeWebView) {
-              window.ReactNativeWebView.postMessage(result);
-            }
-            return result;
-          } catch(e) {
-            if (window.ReactNativeWebView) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({ error: e.message }));
-            }
-            return JSON.stringify({ error: e.message });
-          }
-        })();
-        true;
-      `;
-      
-      await webViewRef.current?.injectJavaScript(script);
-      
+    // Extract metadata manually
+    console.log('[Browser] Manually extracting metadata...');
+    const success = await metadata.extractMetadata(navigation.currentUrl, true);
+    
+    if (success) {
       // Wait a bit for the message, then show overlay or alert
       setTimeout(() => {
-        if (extractedMetadata && extractedMetadata.title) {
+        if (metadata.extractedMetadata?.title) {
           setShowOverlay(true);
         } else {
           alert('Could not extract manga information. The page may not be fully loaded yet. Please wait a moment and try again.');
         }
       }, 1000);
-    } catch (error) {
-      console.error('Failed to extract metadata:', error);
-      alert('Failed to extract manga information');
-    }
-  };
-
-  const handleNavigationStateChange = async (navState: any) => {
-    setCanGoBack(navState.canGoBack);
-    setCanGoForward(navState.canGoForward);
-    setCurrentUrl(navState.url);
-
-    // Update reading progress if userMangaId is provided
-    if (userMangaId && navState.url) {
-      // Clear any pending progress update
-      if (progressUpdateTimeoutRef.current) {
-        clearTimeout(progressUpdateTimeoutRef.current);
-      }
-
-      // Debounce progress updates (wait 2 seconds after user stops navigating)
-      progressUpdateTimeoutRef.current = setTimeout(async () => {
-        try {
-          // Extract chapter number from URL
-          const chapterNumber = extractChapterNumber(navState.url);
-          
-          if (chapterNumber) {
-            console.log('Updating reading progress - Chapter:', chapterNumber, 'URL:', navState.url);
-            
-            await apiService.updateMangaProgress(userMangaId, {
-              lastReadUrl: navState.url,
-              currentChapter: chapterNumber,
-              status: 'reading',
-            });
-            
-            console.log('Progress updated successfully');
-          }
-          // Don't update progress for series pages (they don't have chapter numbers)
-          // This avoids confusion when briefly visiting series pages to fetch metadata
-        } catch (error) {
-          console.error('Failed to update reading progress:', error);
-        }
-      }, 2000);
-    }
-
-    // Check if we're on a manga detail page and extract metadata
-    // But don't extract if overlay is already showing (user manually triggered extraction)
-    if (isMangaDetailPage(navState.url) && !showOverlay) {
-      const extractor = getExtractorForUrl(navState.url);
-      if (extractor && webViewRef.current) {
-        // Delay extraction to ensure page is fully loaded (increased delay)
-        setTimeout(async () => {
-          try {
-            // Get the base injection script
-            const baseScript = extractor.getInjectionScript();
-            
-            // Wrap it to post message to React Native
-            const script = `
-              (function() {
-                try {
-                  // Execute the extraction
-                  const result = ${baseScript};
-                  
-                  // Post the result back to React Native
-                  if (window.ReactNativeWebView) {
-                    window.ReactNativeWebView.postMessage(result);
-                  }
-                } catch(e) {
-                  if (window.ReactNativeWebView) {
-                    window.ReactNativeWebView.postMessage(JSON.stringify({ error: e.message }));
-                  }
-                }
-              })();
-              true;
-            `;
-            
-            await webViewRef.current?.injectJavaScript(script);
-          } catch (error) {
-            console.error('Failed to extract metadata:', error);
-          }
-        }, 3500); // Increased to 3.5 seconds for dynamic content
-      }
-    }
-  };
-
-  const handleWebViewMessage = (event: any) => {
-    try {
-      const messageData = event.nativeEvent.data;
-      console.log('Received WebView message:', messageData);
-      
-      const metadata = parseMetadata(messageData);
-      if (metadata) {
-        setExtractedMetadata(metadata);
-        console.log('Successfully extracted metadata:', metadata.title);
-      } else {
-        console.log('Failed to parse metadata from message');
-      }
-    } catch (error) {
-      console.error('Error handling WebView message:', error);
     }
   };
 
@@ -233,7 +87,7 @@ export default function BrowserScreen() {
                 {websiteName}
               </Text>
               <Text className="text-white/80 text-xs" numberOfLines={1}>
-                {currentUrl || websiteUrl}
+                {navigation.currentUrl || websiteUrl}
               </Text>
             </View>
           </View>
@@ -244,14 +98,14 @@ export default function BrowserScreen() {
           <View className="flex-row items-center">
             <TouchableOpacity
               className={`mr-3 px-4 py-2 rounded-lg ${
-                canGoBack ? 'bg-white/20' : 'bg-white/10'
+                navigation.canGoBack ? 'bg-white/20' : 'bg-white/10'
               }`}
-              onPress={handleBack}
-              disabled={!canGoBack}
+              onPress={navigation.handleBack}
+              disabled={!navigation.canGoBack}
               activeOpacity={0.8}
             >
               <Text className={`font-semibold ${
-                canGoBack ? 'text-white' : 'text-white/40'
+                navigation.canGoBack ? 'text-white' : 'text-white/40'
               }`}>
                 ←
               </Text>
@@ -259,14 +113,14 @@ export default function BrowserScreen() {
             
             <TouchableOpacity
               className={`mr-3 px-4 py-2 rounded-lg ${
-                canGoForward ? 'bg-white/20' : 'bg-white/10'
+                navigation.canGoForward ? 'bg-white/20' : 'bg-white/10'
               }`}
-              onPress={handleForward}
-              disabled={!canGoForward}
+              onPress={navigation.handleForward}
+              disabled={!navigation.canGoForward}
               activeOpacity={0.8}
             >
               <Text className={`font-semibold ${
-                canGoForward ? 'text-white' : 'text-white/40'
+                navigation.canGoForward ? 'text-white' : 'text-white/40'
               }`}>
                 →
               </Text>
@@ -274,7 +128,7 @@ export default function BrowserScreen() {
 
             <TouchableOpacity
               className="bg-white/20 px-4 py-2 rounded-lg"
-              onPress={handleRefresh}
+              onPress={navigation.handleRefresh}
               activeOpacity={0.8}
             >
               <Text className="text-white font-semibold">⟳</Text>
@@ -292,7 +146,7 @@ export default function BrowserScreen() {
       </View>
 
       {/* Loading Indicator */}
-      {loading && (
+      {navigation.loading && (
         <View className="absolute top-1/2 left-1/2 -ml-5 -mt-5 z-10">
           <ActivityIndicator size="large" color={websiteColor} />
         </View>
@@ -303,10 +157,10 @@ export default function BrowserScreen() {
         ref={webViewRef}
         source={{ uri: websiteUrl }}
         style={{ flex: 1 }}
-        onLoadStart={() => setLoading(true)}
-        onLoadEnd={() => setLoading(false)}
+        onLoadStart={() => navigation.setLoading(true)}
+        onLoadEnd={() => navigation.setLoading(false)}
         onNavigationStateChange={handleNavigationStateChange}
-        onMessage={handleWebViewMessage}
+        onMessage={metadata.handleWebViewMessage}
         javaScriptEnabled
         domStorageEnabled
       />
@@ -314,11 +168,11 @@ export default function BrowserScreen() {
       {/* Reader Overlay */}
       <ReaderOverlay
         visible={showOverlay}
-        metadata={extractedMetadata}
+        metadata={metadata.extractedMetadata}
         onClose={() => setShowOverlay(false)}
         onSuccess={() => {
           setShowOverlay(false);
-          setExtractedMetadata(null);
+          metadata.clearMetadata();
         }}
       />
     </View>

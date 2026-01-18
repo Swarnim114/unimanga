@@ -1,10 +1,9 @@
 import { BaseWebsiteAdapter } from './BaseWebsiteAdapter';
-import { MangaDexAdapter } from './MangaDexAdapter';
-import { MangaPlusAdapter } from './MangaPlusAdapter';
+import { DebugAdapter } from './DebugAdapter';
 import { WebtoonsAdapter } from './WebtoonsAdapter';
 import { AsuraScansAdapter } from './AsuraScansAdapter';
 import { MangaFireAdapter } from './MangaFireAdapter';
-import { MangaKakalotAdapter } from './MangaKakalotAdapter';
+import { WeebCentralAdapter } from './WeebCentralAdapter';
 
 /**
  * FACTORY PATTERN - Extractor Factory
@@ -31,12 +30,13 @@ export class ExtractorFactory {
    * This is called automatically in the constructor
    */
   private registerDefaultAdapters(): void {
-    this.register(new MangaDexAdapter());
-    this.register(new MangaPlusAdapter());
+    // 🐛 DEBUG MODE: Uncomment to use DebugAdapter
+    // this.register(new DebugAdapter());
+    
     this.register(new WebtoonsAdapter());
     this.register(new AsuraScansAdapter());
     this.register(new MangaFireAdapter());
-    this.register(new MangaKakalotAdapter());
+    this.register(new WeebCentralAdapter());
   }
 
   /**

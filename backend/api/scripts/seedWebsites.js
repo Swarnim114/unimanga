@@ -7,20 +7,6 @@ dotenv.config();
 
 const websites = [
   { 
-    name: 'MangaDex', 
-    url: 'https://mangadex.org', 
-    language: 'Multi', 
-    color: '#FF6740',
-    isActive: true 
-  },
-  { 
-    name: 'MangaPlus', 
-    url: 'https://mangaplus.shueisha.co.jp', 
-    language: 'EN', 
-    color: '#FF0000',
-    isActive: true 
-  },
-  { 
     name: 'Webtoons', 
     url: 'https://www.webtoons.com', 
     language: 'EN', 
@@ -42,10 +28,10 @@ const websites = [
     isActive: true 
   },
   { 
-    name: 'MangaKakalot', 
-    url: 'https://mangakakalot.com', 
+    name: 'WeebCentral', 
+    url: 'https://weebcentral.com', 
     language: 'EN', 
-    color: '#FFB800',
+    color: '#9333EA',
     isActive: true 
   }
 ];
