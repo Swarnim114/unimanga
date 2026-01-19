@@ -11,7 +11,7 @@ import { apiService, UserManga, Category } from '../services/api.service';
 /**
  * Hook for managing library data and filtering
  */
-export function useLibrary() {
+export function useLibrary(onError?: (message: string) => void) {
   const [library, setLibrary] = useState<UserManga[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -28,12 +28,12 @@ export function useLibrary() {
       setLibrary(libraryData);
       setCategories(categoriesData);
     } catch (error) {
-      console.error('[useLibrary] Failed to load library:', error);
-      Alert.alert('Error', 'Failed to load library');
+      console.log('[useLibrary] Failed to load library:', error);
+      onError?.('Failed to load library');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // Remove onError from dependencies to prevent infinite loop
 
   // Auto-reload library when screen comes into focus
   useFocusEffect(
@@ -67,41 +67,39 @@ export function useLibrary() {
 /**
  * Hook for managing manga actions (delete, change category, etc.)
  */
-export function useMangaActions(onSuccess?: () => void) {
+export function useMangaActions(
+  onSuccess?: (message: string) => void,
+  onError?: (message: string) => void,
+  onConfirm?: (title: string, message: string, onYes: () => void) => void
+) {
   const [actionInProgress, setActionInProgress] = useState(false);
 
   const deleteManga = async (mangaId: string, mangaTitle: string) => {
     return new Promise<boolean>((resolve) => {
-      Alert.alert(
-        'Delete Manga',
-        `Are you sure you want to remove "${mangaTitle}" from your library?`,
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => resolve(false),
-          },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                setActionInProgress(true);
-                await apiService.deleteMangaFromLibrary(mangaId);
-                Alert.alert('Success', 'Manga removed from library');
-                onSuccess?.();
-                resolve(true);
-              } catch (error) {
-                console.error('[useMangaActions] Failed to delete manga:', error);
-                Alert.alert('Error', 'Failed to remove manga from library');
-                resolve(false);
-              } finally {
-                setActionInProgress(false);
-              }
-            },
-          },
-        ]
-      );
+      const performDelete = async () => {
+        try {
+          setActionInProgress(true);
+          await apiService.deleteMangaFromLibrary(mangaId);
+          onSuccess?.('Manga removed from library');
+          resolve(true);
+        } catch (error) {
+          console.log('[useMangaActions] Failed to delete manga:', error);
+          onError?.('Failed to remove manga from library');
+          resolve(false);
+        } finally {
+          setActionInProgress(false);
+        }
+      };
+
+      if (onConfirm) {
+        onConfirm(
+          'Delete Manga',
+          `Are you sure you want to remove "${mangaTitle}" from your library?`,
+          performDelete
+        );
+      } else {
+        performDelete();
+      }
     });
   };
 
@@ -113,12 +111,11 @@ export function useMangaActions(onSuccess?: () => void) {
     try {
       setActionInProgress(true);
       await apiService.updateMangaCategory(mangaId, categoryId);
-      Alert.alert('Success', `Category updated for "${mangaTitle}"`);
-      onSuccess?.();
+      onSuccess?.(`Category updated for "${mangaTitle}"`);
       return true;
     } catch (error) {
-      console.error('[useMangaActions] Failed to change category:', error);
-      Alert.alert('Error', 'Failed to update category');
+      console.log('[useMangaActions] Failed to change category:', error);
+      onError?.('Failed to update category');
       return false;
     } finally {
       setActionInProgress(false);

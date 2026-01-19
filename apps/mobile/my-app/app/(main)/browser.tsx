@@ -9,6 +9,7 @@ import {
   useMetadataExtraction, 
   useProgressTracking 
 } from '../../hooks/useWebView';
+import { Toast, useToast } from '../../components/Toast';
 
 export default function BrowserScreen() {
   const params = useLocalSearchParams();
@@ -17,6 +18,7 @@ export default function BrowserScreen() {
   
   // Component state
   const [showOverlay, setShowOverlay] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
 
   // URL params
   const websiteName = params.name as string || 'Browser';
@@ -26,7 +28,13 @@ export default function BrowserScreen() {
 
   // Custom hooks for separation of concerns
   const navigation = useWebViewNavigation(webViewRef);
-  const metadata = useMetadataExtraction(webViewRef, navigation.currentUrl, showOverlay);
+  const metadata = useMetadataExtraction(
+    webViewRef, 
+    navigation.currentUrl, 
+    showOverlay,
+    () => showToast('This website is not supported yet', 'warning'),
+    () => showToast('Failed to extract manga information', 'error')
+  );
   const progress = useProgressTracking(userMangaId);
 
   // Handle navigation changes
@@ -41,7 +49,7 @@ export default function BrowserScreen() {
 
     // Check if current page is supported
     if (!metadataService.isMangaDetailPage(navigation.currentUrl)) {
-      alert('Please navigate to a manga detail page first');
+      showToast('Please navigate to a manga detail page first', 'warning');
       return;
     }
 
@@ -61,7 +69,7 @@ export default function BrowserScreen() {
         if (metadata.extractedMetadata?.title) {
           setShowOverlay(true);
         } else {
-          alert('Could not extract manga information. The page may not be fully loaded yet. Please wait a moment and try again.');
+          showToast('Could not extract manga information. Please try again.', 'error');
         }
       }, 1000);
     }
@@ -174,6 +182,14 @@ export default function BrowserScreen() {
           setShowOverlay(false);
           metadata.clearMetadata();
         }}
+      />
+
+      {/* Toast Notifications */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
       />
     </View>
   );

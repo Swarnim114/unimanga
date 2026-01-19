@@ -13,15 +13,24 @@ export default function HomeScreen() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loadingWebsites, setLoadingWebsites] = useState(true);
   const { toast, showToast, hideToast } = useToast();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteCallback, setDeleteCallback] = useState<(() => void) | null>(null);
 
   // Use custom hooks for library management
-  const library = useLibrary();
+  const library = useLibrary((error) => showToast(error, 'error'));
   const mangaMenu = useMangaMenu();
-  const mangaActions = useMangaActions(() => {
-    library.loadLibrary();
-    mangaMenu.closeAll();
-    showToast('Action completed successfully', 'success');
-  });
+  const mangaActions = useMangaActions(
+    (message) => {
+      library.loadLibrary();
+      mangaMenu.closeAll();
+      showToast(message, 'success');
+    },
+    (message) => showToast(message, 'error'),
+    (title, message, onYes) => {
+      setDeleteCallback(() => onYes);
+      setShowDeleteConfirm(true);
+    }
+  );
 
   useEffect(() => {
     loadWebsites();
@@ -33,7 +42,7 @@ export default function HomeScreen() {
       const data = await apiService.getWebsites();
       setWebsites(data);
     } catch (error) {
-      console.error('Failed to load websites:', error);
+      console.log('Failed to load websites:', error);
     } finally {
       setLoadingWebsites(false);
     }
@@ -338,43 +347,55 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={mangaMenu.closeOptionsMenu}
       >
-        <TouchableOpacity
-          className="flex-1 bg-black/50 justify-center items-center"
-          activeOpacity={1}
-          onPress={mangaMenu.closeOptionsMenu}
-        >
-          <View className="bg-[#2C2C2E] rounded-2xl w-4/5 overflow-hidden" onStartShouldSetResponder={() => true}>
-            <View className="p-4 border-b border-white/10">
-              <Text className="text-white font-bold text-lg" numberOfLines={2}>
+        <View className="flex-1 bg-black/60 justify-end">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={mangaMenu.closeOptionsMenu}
+          />
+          <View className="bg-[#1C1C1E] rounded-t-3xl overflow-hidden" onStartShouldSetResponder={() => true}>
+            {/* Handle Bar */}
+            <View className="items-center py-3">
+              <View className="w-12 h-1 bg-white/20 rounded-full" />
+            </View>
+
+            {/* Title */}
+            <View className="px-6 pb-4">
+              <Text className="text-white font-bold text-xl" numberOfLines={2}>
                 {mangaMenu.selectedManga && cleanMangaTitle(mangaMenu.selectedManga.manga.title)}
               </Text>
             </View>
 
-            <TouchableOpacity
-              className="px-6 py-4 border-b border-white/5 active:bg-white/5"
-              onPress={mangaMenu.openCategoryModal}
-              activeOpacity={0.8}
-            >
-              <Text className="text-white text-base">📁 Change Category</Text>
-            </TouchableOpacity>
+            {/* Options */}
+            <View className="px-4 pb-6">
+              <TouchableOpacity
+                className="flex-row items-center justify-center bg-[#2C2C2E] px-4 py-4 rounded-xl mb-3 active:bg-[#3C3C3E]"
+                onPress={mangaMenu.openCategoryModal}
+                activeOpacity={0.8}
+              >
+                <Text className="text-2xl mr-3">📁</Text>
+                <Text className="text-white text-base font-medium">Change Category</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              className="px-6 py-4 active:bg-white/5"
-              onPress={handleDeleteManga}
-              activeOpacity={0.8}
-            >
-              <Text className="text-red-500 text-base">🗑️ Remove from Library</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-row items-center justify-center bg-[#2C2C2E] px-4 py-4 rounded-xl mb-3 active:bg-[#3C3C3E]"
+                onPress={handleDeleteManga}
+                activeOpacity={0.8}
+              >
+                <Text className="text-2xl mr-3">🗑️</Text>
+                <Text className="text-red-400 text-base font-medium">Remove from Library</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              className="px-6 py-4 border-t border-white/10 active:bg-white/5"
-              onPress={mangaMenu.closeOptionsMenu}
-              activeOpacity={0.8}
-            >
-              <Text className="text-gray-400 text-base text-center">Cancel</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                className="bg-[#2C2C2E] px-4 py-4 rounded-xl active:bg-[#3C3C3E]"
+                onPress={mangaMenu.closeOptionsMenu}
+                activeOpacity={0.8}
+              >
+                <Text className="text-gray-400 text-base text-center font-semibold">Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* Category Selection Modal */}
@@ -384,43 +405,103 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={mangaMenu.closeCategoryModal}
       >
-        <TouchableOpacity
-          className="flex-1 bg-black/50 justify-center items-center"
-          activeOpacity={1}
-          onPress={mangaMenu.closeCategoryModal}
-        >
-          <View className="bg-[#2C2C2E] rounded-2xl w-4/5 max-h-96 overflow-hidden" onStartShouldSetResponder={() => true}>
-            <View className="p-4 border-b border-white/10">
-              <Text className="text-white font-bold text-lg">Select Category</Text>
+        <View className="flex-1 bg-black/60 justify-end">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={mangaMenu.closeCategoryModal}
+          />
+          <View className="bg-[#1C1C1E] rounded-t-3xl max-h-[80%] overflow-hidden" onStartShouldSetResponder={() => true}>
+            {/* Handle Bar */}
+            <View className="items-center py-3">
+              <View className="w-12 h-1 bg-white/20 rounded-full" />
             </View>
 
-            <ScrollView className="max-h-80">
+            {/* Title */}
+            <View className="px-6 pb-4">
+              <Text className="text-white font-bold text-xl">Select Category</Text>
+            </View>
+
+            <ScrollView className="px-4 pb-6">
               {library.categories.map((category) => (
                 <TouchableOpacity
                   key={category._id}
-                  className="px-6 py-4 border-b border-white/5 active:bg-white/5"
+                  className="flex-row items-center justify-between bg-[#2C2C2E] px-4 py-4 rounded-xl mb-3 active:bg-[#3C3C3E]"
                   onPress={() => handleCategorySelect(category._id)}
                   activeOpacity={0.8}
                 >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-white text-base">{category.name}</Text>
-                    {mangaMenu.selectedManga?.category._id === category._id && (
-                      <Text className="text-[#6366F1]">✓</Text>
-                    )}
-                  </View>
+                  <Text className="text-white text-base font-medium">{category.name}</Text>
+                  {mangaMenu.selectedManga?.category._id === category._id && (
+                    <View className="bg-[#6366F1] w-6 h-6 rounded-full items-center justify-center">
+                      <Text className="text-white text-sm font-bold">✓</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            <TouchableOpacity
-              className="px-6 py-4 border-t border-white/10 active:bg-white/5"
-              onPress={mangaMenu.closeCategoryModal}
-              activeOpacity={0.8}
-            >
-              <Text className="text-gray-400 text-base text-center">Cancel</Text>
-            </TouchableOpacity>
+            <View className="px-4 pb-6">
+              <TouchableOpacity
+                className="bg-[#2C2C2E] px-4 py-4 rounded-xl active:bg-[#3C3C3E]"
+                onPress={mangaMenu.closeCategoryModal}
+                activeOpacity={0.8}
+              >
+                <Text className="text-gray-400 text-base text-center font-semibold">Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteConfirm(false)}
+      >
+        <View className="flex-1 bg-black/60 justify-end">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={() => setShowDeleteConfirm(false)}
+          />
+          <View className="bg-[#1C1C1E] rounded-t-3xl overflow-hidden" onStartShouldSetResponder={() => true}>
+            {/* Handle Bar */}
+            <View className="items-center py-3">
+              <View className="w-12 h-1 bg-white/20 rounded-full" />
+            </View>
+
+            {/* Content */}
+            <View className="px-6 pb-6">
+              <Text className="text-white font-bold text-xl mb-3">Delete Manga</Text>
+              <Text className="text-gray-400 text-base leading-6 mb-6">
+                Are you sure you want to remove "{mangaMenu.selectedManga && cleanMangaTitle(mangaMenu.selectedManga.manga.title)}" from your library?
+              </Text>
+
+              <View className="flex-row gap-4">
+                <TouchableOpacity
+                  className="flex-1 bg-[#2C2C2E] px-4 py-4 rounded-xl active:bg-[#3C3C3E]"
+                  onPress={() => setShowDeleteConfirm(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text className="text-gray-400 text-base text-center font-semibold">Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-1 bg-red-500/20 px-4 py-4 rounded-xl active:bg-red-500/30"
+                  onPress={() => {
+                    setShowDeleteConfirm(false);
+                    deleteCallback?.();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text className="text-red-400 text-base text-center font-bold">Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
       </Modal>
       
       <Toast

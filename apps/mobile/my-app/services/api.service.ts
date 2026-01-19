@@ -82,7 +82,7 @@ export const apiService = {
       const response = await axios.get(`${API_BASE_URL}/websites`, config);
       return response.data.websites;
     } catch (error) {
-      console.error('Error fetching websites:', error);
+      console.log('Error fetching websites:', error);
       throw error;
     }
   },
@@ -104,7 +104,7 @@ export const apiService = {
       const response = await axios.get(url, config);
       return response.data.library;
     } catch (error) {
-      console.error('Error fetching library:', error);
+      console.log('Error fetching library:', error);
       throw error;
     }
   },
@@ -134,7 +134,7 @@ export const apiService = {
       const response = await axios.post(`${API_BASE_URL}/library`, data, config);
       return response.data.userManga;
     } catch (error) {
-      console.error('Error adding manga to library:', error);
+      console.log('Error adding manga to library:', error);
       throw error;
     }
   },
@@ -146,7 +146,7 @@ export const apiService = {
       const response = await axios.get(`${API_BASE_URL}/categories`, config);
       return response.data.categories;
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.log('Error fetching categories:', error);
       throw error;
     }
   },
@@ -161,7 +161,7 @@ export const apiService = {
       const response = await axios.post(`${API_BASE_URL}/categories`, data, config);
       return response.data.category;
     } catch (error) {
-      console.error('Error creating category:', error);
+      console.log('Error creating category:', error);
       throw error;
     }
   },
@@ -177,7 +177,7 @@ export const apiService = {
       const response = await axios.put(`${API_BASE_URL}/categories/${id}`, data, config);
       return response.data.category;
     } catch (error) {
-      console.error('Error updating category:', error);
+      console.log('Error updating category:', error);
       throw error;
     }
   },
@@ -187,7 +187,7 @@ export const apiService = {
       const config = await getAuthHeaders();
       await axios.delete(`${API_BASE_URL}/categories/${id}`, config);
     } catch (error) {
-      console.error('Error deleting category:', error);
+      console.log('Error deleting category:', error);
       throw error;
     }
   },
@@ -204,7 +204,7 @@ export const apiService = {
       const response = await axios.put(`${API_BASE_URL}/library/${id}/progress`, data, config);
       return response.data.userManga;
     } catch (error) {
-      console.error('Error updating manga progress:', error);
+      console.log('Error updating manga progress:', error);
       throw error;
     }
   },
@@ -214,7 +214,7 @@ export const apiService = {
       const config = await getAuthHeaders();
       await axios.delete(`${API_BASE_URL}/library/${id}`, config);
     } catch (error) {
-      console.error('Error deleting manga from library:', error);
+      console.log('Error deleting manga from library:', error);
       throw error;
     }
   },
@@ -225,7 +225,7 @@ export const apiService = {
       const response = await axios.put(`${API_BASE_URL}/library/${id}/category`, { categoryId }, config);
       return response.data.userManga;
     } catch (error) {
-      console.error('Error updating manga category:', error);
+      console.log('Error updating manga category:', error);
       throw error;
     }
   },

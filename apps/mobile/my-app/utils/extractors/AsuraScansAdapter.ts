@@ -154,7 +154,7 @@ export class AsuraScansAdapter extends BaseWebsiteAdapter {
           
           return JSON.stringify(result);
         } catch(e) {
-          console.error('AsuraScans extraction error:', e);
+          console.log('AsuraScans extraction error:', e);
           return JSON.stringify({ error: e.message });
         }
       })();

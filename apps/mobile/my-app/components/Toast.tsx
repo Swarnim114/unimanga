@@ -101,13 +101,11 @@ export function Toast({ message, type = 'info', visible, onHide, duration = 3000
         opacity,
         transform: [{ translateY }],
         position: 'absolute',
-        top: '50%',
-        left: 0,
-        right: 0,
+        bottom: 80,
+        left: 20,
+        right: 20,
         zIndex: 9999,
-        marginTop: -50, // Half of approximate toast height to truly center
       }}
-      className="px-6"
     >
       <View className={`${toastStyle.bg} rounded-2xl p-4 shadow-2xl flex-row items-center`}>
         <Ionicons name={toastStyle.icon} size={24} color={toastStyle.iconColor} />

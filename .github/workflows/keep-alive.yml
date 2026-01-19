@@ -1,0 +1,22 @@
+name: Keep Render API Active
+
+on:
+  schedule:
+    # Ping every 10 minutes to keep service awake
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render API
+        run: |
+          echo "Pinging API to keep it active..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://unimanga-api.onrender.com/)
+          echo "Response code: $response"
+          if [ $response -eq 200 ]; then
+            echo "✅ API is healthy"
+          else
+            echo "⚠️ API returned status $response"
+          fi

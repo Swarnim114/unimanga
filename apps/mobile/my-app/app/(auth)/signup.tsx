@@ -49,7 +49,7 @@ export default function SignupScreen() {
         router.replace('/(main)/home');
       }, 500);
     } catch (error) {
-      console.error('Registration error:', error);
+      console.log('Registration error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       showToast(errorMessage, 'error');
     } finally {
