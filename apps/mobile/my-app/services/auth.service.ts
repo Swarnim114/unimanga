@@ -1,10 +1,8 @@
 import axios, { AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Change this to your computer's IP address when testing on physical device
-// For web/local development, use localhost
-// Find your IP: Linux: ip addr | grep inet, Mac: ifconfig | grep inet, Windows: ipconfig
-const API_URL = 'http://192.168.1.18:3000/api/auth';
+// Production API URL (Render deployment)
+const API_URL = 'https://unimanga.onrender.com/api/auth';
 
 interface AuthResponse {
   message: string;
