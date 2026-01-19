@@ -13,7 +13,7 @@ jobs:
       - name: Ping Render API
         run: |
           echo "Pinging API to keep it active..."
-          response=$(curl -s -o /dev/null -w "%{http_code}" https://unimanga-api.onrender.com/)
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://unimanga.onrender.com/)
           echo "Response code: $response"
           if [ $response -eq 200 ]; then
             echo "✅ API is healthy"
