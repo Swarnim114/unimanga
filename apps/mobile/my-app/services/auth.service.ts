@@ -68,7 +68,7 @@ export const authService = {
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.log('Logout error:', error);
     }
   },
 

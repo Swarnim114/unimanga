@@ -40,7 +40,7 @@ export default function LoginScreen() {
         router.replace('/(main)/home');
       }, 500);
     } catch (error) {
-      console.error('Login error:', error);
+      console.log('Login error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       showToast(errorMessage, 'error');
     } finally {

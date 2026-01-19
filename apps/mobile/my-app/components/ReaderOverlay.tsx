@@ -6,12 +6,12 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { MangaMetadata } from '../utils/metadataExtractors';
 import { apiService, Category } from '../services/api.service';
 import CategorySelector from './CategorySelector';
 import { cleanMangaTitle, extractChapterNumber } from '../utils/mangaHelpers';
+import { Toast, useToast } from './Toast';
 
 interface ReaderOverlayProps {
   visible: boolean;
@@ -30,6 +30,7 @@ export default function ReaderOverlay({
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [addingToLibrary, setAddingToLibrary] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
     if (visible) {
@@ -48,9 +49,9 @@ export default function ReaderOverlay({
         console.warn('No categories found for user. User may need to create categories first.');
       }
     } catch (error: any) {
-      console.error('Failed to load categories:', error);
+      console.log('Failed to load categories:', error);
       const errorMessage = error.response?.data?.message || 'Failed to load categories. Please check your connection.';
-      Alert.alert('Error', errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setLoadingCategories(false);
     }
@@ -92,17 +93,17 @@ export default function ReaderOverlay({
         lastReadUrl: metadata.sourceUrl,
       });
 
-      Alert.alert('Success', `${cleanedTitle || metadata.title} added to your library!`);
+      showToast(`${cleanedTitle || metadata.title} added to your library!`, 'success');
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Failed to add manga to library:', error);
+      console.log('Failed to add manga to library:', error);
       
       // Check if manga already exists
       if (error.response?.data?.message?.includes('already in your library')) {
-        Alert.alert('Already Added', 'This manga is already in your library');
+        showToast('This manga is already in your library', 'info');
       } else {
-        Alert.alert('Error', 'Failed to add manga to library. Please try again.');
+        showToast('Failed to add manga to library. Please try again.', 'error');
       }
     } finally {
       setAddingToLibrary(false);
@@ -288,6 +289,14 @@ export default function ReaderOverlay({
         onSelect={handleCategorySelect}
         onClose={() => setShowCategorySelector(false)}
         onCategoryCreated={loadCategories}
+      />
+
+      {/* Toast Notifications */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
       />
     </>
   );

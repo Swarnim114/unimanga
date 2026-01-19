@@ -11,19 +11,19 @@ export const parseMetadata = (jsonString: string): MangaMetadata | null => {
     const data = JSON.parse(jsonString);
     
     if (data.error || !data.title) {
-      console.error('Metadata extraction error:', data.error || 'No title found');
+      console.log('Metadata extraction error:', data.error || 'No title found');
       return null;
     }
     
     // Validate required fields
     if (!data.sourceUrl || !data.sourceWebsite) {
-      console.error('Missing required metadata fields');
+      console.log('Missing required metadata fields');
       return null;
     }
     
     return data as MangaMetadata;
   } catch (error) {
-    console.error('Failed to parse metadata:', error);
+    console.log('Failed to parse metadata:', error);
     return null;
   }
 };

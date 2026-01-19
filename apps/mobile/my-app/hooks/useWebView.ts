@@ -63,7 +63,9 @@ export function useWebViewNavigation(webViewRef: React.RefObject<WebView | null>
 export function useMetadataExtraction(
   webViewRef: React.RefObject<WebView | null>,
   currentUrl: string,
-  showOverlay: boolean
+  showOverlay: boolean,
+  onUnsupportedWebsite?: () => void,
+  onExtractionFailed?: () => void
 ) {
   const [extractedMetadata, setExtractedMetadata] = useState<MangaMetadata | null>(null);
 
@@ -84,7 +86,7 @@ export function useMetadataExtraction(
     const script = metadataService.getInjectionScript(url);
     if (!script) {
       if (isManual) {
-        alert('This website is not supported yet');
+        onUnsupportedWebsite?.();
       }
       return false;
     }
@@ -93,9 +95,9 @@ export function useMetadataExtraction(
       await webViewRef.current?.injectJavaScript(script);
       return true;
     } catch (error) {
-      console.error('[useMetadataExtraction] Failed to inject script:', error);
+      console.log('[useMetadataExtraction] Failed to inject script:', error);
       if (isManual) {
-        alert('Failed to extract manga information');
+        onExtractionFailed?.();
       }
       return false;
     }
@@ -112,7 +114,7 @@ export function useMetadataExtraction(
         console.log('[useMetadataExtraction] Successfully extracted:', metadata.title);
       }
     } catch (error) {
-      console.error('[useMetadataExtraction] Error handling message:', error);
+      console.log('[useMetadataExtraction] Error handling message:', error);
     }
   };
 
@@ -167,7 +169,7 @@ export function useProgressTracking(userMangaId?: string) {
           console.log('[useProgressTracking] Progress updated successfully');
         }
       } catch (error) {
-        console.error('[useProgressTracking] Failed to update progress:', error);
+        console.log('[useProgressTracking] Failed to update progress:', error);
       }
     }, 2000);
   };

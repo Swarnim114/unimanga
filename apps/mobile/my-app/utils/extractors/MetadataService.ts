@@ -43,7 +43,7 @@ export class MetadataService {
     try {
       return extractorFactory.getAdapterForUrl(url);
     } catch (error) {
-      console.error('[MetadataService] Error getting adapter for URL:', url, error);
+      console.log('[MetadataService] Error getting adapter for URL:', url, error);
       return null;
     }
   }
@@ -81,27 +81,10 @@ export class MetadataService {
       return null;
     }
 
-    // If this is a chapter page, navigate to series page first
+    // If this is a chapter page, don't extract metadata (user is reading)
     if (adapter.isChapterPage(url)) {
-      const seriesUrl = adapter.getSeriesUrlFromChapter(url);
-      if (seriesUrl) {
-        console.log('[MetadataService] Chapter page detected, redirecting to series page:', seriesUrl);
-        // Return script to navigate to series page and extract from there
-        return `
-          (function() {
-            try {
-              // Navigate to series page
-              window.location.href = '${seriesUrl}';
-              return JSON.stringify({ 
-                _redirecting: true, 
-                message: 'Redirecting to series page...' 
-              });
-            } catch(e) {
-              return JSON.stringify({ error: e.message });
-            }
-          })();
-        `;
-      }
+      console.log('[MetadataService] Chapter page detected, skipping metadata extraction (user is reading)');
+      return null;
     }
 
     const baseScript = adapter.getInjectionScript();
@@ -116,7 +99,7 @@ export class MetadataService {
           }
           return result;
         } catch(e) {
-          console.error('[MetadataExtraction] Error:', e);
+          console.log('[MetadataExtraction] Error:', e);
           if (window.ReactNativeWebView) {
             window.ReactNativeWebView.postMessage(JSON.stringify({ error: e.message }));
           }
@@ -138,7 +121,7 @@ export class MetadataService {
       console.log('[MetadataService] Parsing metadata...');
       
       if (!jsonString || typeof jsonString !== 'string') {
-        console.error('[MetadataService] Invalid input: not a string');
+        console.log('[MetadataService] Invalid input: not a string');
         return null;
       }
       
@@ -161,18 +144,18 @@ export class MetadataService {
       }
       
       if (data.error) {
-        console.error('[MetadataService] Extraction error from page:', data.error);
+        console.log('[MetadataService] Extraction error from page:', data.error);
         return null;
       }
       
       // Validate required fields
       if (!data.title) {
-        console.error('[MetadataService] No title found in extracted data');
+        console.log('[MetadataService] No title found in extracted data');
         return null;
       }
       
       if (!data.sourceUrl || !data.sourceWebsite) {
-        console.error('[MetadataService] Missing required fields (sourceUrl or sourceWebsite)');
+        console.log('[MetadataService] Missing required fields (sourceUrl or sourceWebsite)');
         return null;
       }
 
@@ -181,7 +164,7 @@ export class MetadataService {
       if (adapter) {
         const validationResult = adapter.validateMetadata(data);
         if (!validationResult.isValid) {
-          console.error('[MetadataService] Metadata validation failed:', validationResult.errors);
+          console.log('[MetadataService] Metadata validation failed:', validationResult.errors);
           // Still return the data but log the issues
         }
       }
@@ -189,7 +172,7 @@ export class MetadataService {
       console.log('[MetadataService] Successfully parsed metadata for:', data.title);
       return data as MangaMetadata;
     } catch (error) {
-      console.error('[MetadataService] Failed to parse metadata JSON:', error);
+      console.log('[MetadataService] Failed to parse metadata JSON:', error);
       return null;
     }
   }
