@@ -26,7 +26,7 @@ app.use("/api/websites", websiteRoutes);
 
 app.get('/', (req, res) => {
     res.json({ 
-        message: 'UniManga API is running!',
+        message: 'UniManga  is running!',
         status: 'healthy',
         timestamp: new Date().toISOString()
     });
