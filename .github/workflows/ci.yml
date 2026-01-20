@@ -173,6 +173,16 @@ jobs:
     name: Container Smoke Test
     runs-on: ubuntu-latest
     needs: scan
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -186,15 +196,22 @@ jobs:
       - name: Run container
         run: |
           docker run -d --name test-container \
-            -e MONGODB_URI=mongodb://test:test@localhost:27017/test \
+            --network host \
+            -e MONGODB_URI=mongodb://localhost:27017/test \
             -e JWT_SECRET=test-secret \
             -e NODE_ENV=test \
-            -p 3000:3000 \
             ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
 
-      - name: Wait for container to be healthy
+      - name: Wait for container to start
+        run: sleep 10
+
+      - name: Check container is running
         run: |
-          timeout 60 bash -c 'until docker inspect --format="{{.State.Health.Status}}" test-container | grep -q "healthy"; do sleep 2; done'
+          if ! docker ps | grep -q test-container; then
+            echo "Container is not running"
+            docker logs test-container
+            exit 1
+          fi
 
       - name: Test health endpoint
         run: |
