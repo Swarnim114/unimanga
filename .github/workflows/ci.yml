@@ -201,7 +201,7 @@ jobs:
       - name: Test health endpoint
         run: |
           for i in {1..10}; do
-            if curl -f http://localhost:3000/healthcheck; then
+            if curl -f http://localhost:3000/; then
               echo "Health check passed!"
               exit 0
             fi
