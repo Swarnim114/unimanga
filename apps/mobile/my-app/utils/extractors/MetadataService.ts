@@ -21,7 +21,7 @@ import { MangaMetadata } from './types';
 export class MetadataService {
   private static instance: MetadataService;
 
-  private constructor() {}
+  private constructor() { }
 
   /**
    * Get singleton instance
@@ -57,14 +57,14 @@ export class MetadataService {
   isMangaDetailPage(url: string): boolean {
     const adapter = this.getExtractorForUrl(url);
     if (!adapter) return false;
-    
+
     // If it's a chapter page, we can still handle it (by extracting from series page)
     if (adapter.isChapterPage(url)) {
       return true;
     }
-    
-    // Otherwise, check if adapter can handle this URL
-    return extractorFactory.canHandle(url);
+
+    // Otherwise, check if adapter's specific logic identifies this as a detail page
+    return adapter.isMangaDetailPage(url);
   }
 
   /**
@@ -88,7 +88,7 @@ export class MetadataService {
     }
 
     const baseScript = adapter.getInjectionScript();
-    
+
     // Wrap the adapter's script to handle WebView communication
     return `
       (function() {
@@ -119,14 +119,14 @@ export class MetadataService {
   parseMetadata(jsonString: string): MangaMetadata | null {
     try {
       console.log('[MetadataService] Parsing metadata...');
-      
+
       if (!jsonString || typeof jsonString !== 'string') {
         console.log('[MetadataService] Invalid input: not a string');
         return null;
       }
-      
+
       const data = JSON.parse(jsonString);
-      
+
       // 🐛 DEBUG MODE: If this is debug output, log it and return null
       if (data._isDebugAdapter) {
         console.log('==========================================');
@@ -136,24 +136,28 @@ export class MetadataService {
         console.log('==========================================');
         return null;
       }
-      
+
       // Handle redirection response (from chapter pages)
       if (data._redirecting) {
         console.log('[MetadataService]', data.message || 'Redirecting...');
         return null;
       }
-      
+
       if (data.error) {
         console.log('[MetadataService] Extraction error from page:', data.error);
         return null;
       }
-      
+
       // Validate required fields
       if (!data.title) {
         console.log('[MetadataService] No title found in extracted data');
+        if (data._debug) {
+          console.log('[MetadataService] Debug info:', JSON.stringify(data._debug, null, 2));
+        }
+        console.log('[MetadataService] Full extracted data:', JSON.stringify(data, null, 2));
         return null;
       }
-      
+
       if (!data.sourceUrl || !data.sourceWebsite) {
         console.log('[MetadataService] Missing required fields (sourceUrl or sourceWebsite)');
         return null;
@@ -168,7 +172,7 @@ export class MetadataService {
           // Still return the data but log the issues
         }
       }
-      
+
       console.log('[MetadataService] Successfully parsed metadata for:', data.title);
       return data as MangaMetadata;
     } catch (error) {

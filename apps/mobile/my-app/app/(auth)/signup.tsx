@@ -10,12 +10,13 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { authService } from '../../services/auth.service';
+import { useAuthStore } from '../../store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { Toast, useToast } from '../../components/Toast';
 
 export default function SignupScreen() {
   const router = useRouter();
+  const signup = useAuthStore((state) => state.signup);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,18 +40,18 @@ export default function SignupScreen() {
       showToast('Passwords do not match', 'error');
       return;
     }
-    
+
     setIsLoading(true);
     try {
-      const response = await authService.register(username, email, password);
-      console.log('Registration successful!', response.message);
+      await signup(username, email, password);
+      console.log('Registration successful!');
       showToast('Account created successfully!', 'success');
       setTimeout(() => {
         router.replace('/(main)/home');
       }, 500);
     } catch (error) {
       console.log('Registration error:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = typeof error === 'string' ? error : 'Registration failed';
       showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
@@ -60,7 +61,7 @@ export default function SignupScreen() {
   return (
     <View className="flex-1 bg-[#1C1C1E]">
       <StatusBar barStyle="light-content" backgroundColor="#1C1C1E" />
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
@@ -79,9 +80,8 @@ export default function SignupScreen() {
             {/* Username Input */}
             <View className="mb-4">
               <Text className="text-gray-400 text-sm mb-2 ml-1">Username</Text>
-              <View className={`bg-[#2C2C2E] rounded-xl ${
-                isUsernameFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
-              }`}>
+              <View className={`bg-[#2C2C2E] rounded-xl ${isUsernameFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
+                }`}>
                 <TextInput
                   className="text-white px-4 py-4 text-base"
                   placeholder="Choose a username"
@@ -101,9 +101,8 @@ export default function SignupScreen() {
             {/* Email Input */}
             <View className="mb-4">
               <Text className="text-gray-400 text-sm mb-2 ml-1">Email</Text>
-              <View className={`bg-[#2C2C2E] rounded-xl ${
-                isEmailFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
-              }`}>
+              <View className={`bg-[#2C2C2E] rounded-xl ${isEmailFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
+                }`}>
                 <TextInput
                   className="text-white px-4 py-4 text-base"
                   placeholder="Enter your email"
@@ -124,9 +123,8 @@ export default function SignupScreen() {
             {/* Password Input */}
             <View className="mb-4">
               <Text className="text-gray-400 text-sm mb-2 ml-1">Password</Text>
-              <View className={`bg-[#2C2C2E] rounded-xl flex-row items-center ${
-                isPasswordFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
-              }`}>
+              <View className={`bg-[#2C2C2E] rounded-xl flex-row items-center ${isPasswordFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
+                }`}>
                 <TextInput
                   className="text-white px-4 py-4 text-base flex-1"
                   placeholder="Create a password"
@@ -158,9 +156,8 @@ export default function SignupScreen() {
             {/* Confirm Password Input */}
             <View className="mb-8">
               <Text className="text-gray-400 text-sm mb-2 ml-1">Confirm Password</Text>
-              <View className={`bg-[#2C2C2E] rounded-xl flex-row items-center ${
-                isConfirmPasswordFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
-              }`}>
+              <View className={`bg-[#2C2C2E] rounded-xl flex-row items-center ${isConfirmPasswordFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
+                }`}>
                 <TextInput
                   className="text-white px-4 py-4 text-base flex-1"
                   placeholder="Confirm your password"
@@ -192,9 +189,8 @@ export default function SignupScreen() {
 
             {/* Register Button */}
             <TouchableOpacity
-              className={`py-4 rounded-xl items-center ${
-                isLoading ? 'bg-[#4F46E5]/50' : 'bg-[#6366F1]'
-              }`}
+              className={`py-4 rounded-xl items-center ${isLoading ? 'bg-[#4F46E5]/50' : 'bg-[#6366F1]'
+                }`}
               onPress={handleSignup}
               disabled={isLoading}
               activeOpacity={0.8}
@@ -218,7 +214,7 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      
+
       <Toast
         visible={toast.visible}
         message={toast.message}

@@ -21,20 +21,40 @@ export function cleanMangaTitle(title: string): string {
  * Extract chapter number from URL or title
  * Examples:
  * "https://asuracomic.net/series/swordmasters-youngest-son-b62b5a15/chapter/194" -> "194"
+ * "https://mangafire.to/read/solo-leveling.1pv7/en/chapter-150" -> "150"
+ * "https://mangafire.to/manga/solo-leveling.1pv7?chapter=150" -> "150"
  * "https://weebcentral.com/chapter/abc123" -> null (needs title parsing)
  * "Chapter 194" -> "194"
  */
 export function extractChapterNumber(url: string, title?: string): string | null {
-  // Try to extract from URL first
-  // Pattern 1: /chapter/123 or /ch/123 or /episode/123
+  console.log('[extractChapterNumber] Checking URL:', url);
+  
+  // Pattern 1: MangaFire - /chapter-123 or ?chapter=123
+  const mangaFireMatch = url.match(/\/chapter-(\d+(?:\.\d+)?)|[?&]chapter=(\d+(?:\.\d+)?)/i);
+  if (mangaFireMatch) {
+    const chapter = mangaFireMatch[1] || mangaFireMatch[2];
+    console.log('[extractChapterNumber] Found (MangaFire):', chapter);
+    return chapter;
+  }
+  
+  // Pattern 2: /chapter/123 or /ch/123 or /episode/123
   const urlMatch = url.match(/\/(chapter|ch|episode|ep)\/(\d+(?:\.\d+)?)/i);
   if (urlMatch) {
+    console.log('[extractChapterNumber] Found (standard):', urlMatch[2]);
     return urlMatch[2];
   }
   
-  // Pattern 2: /123 at the end (common in some sites)
+  // Pattern 3: /read/manga-name/en/chapter-123
+  const readMatch = url.match(/\/read\/[^/]+\/[^/]+\/chapter-?(\d+(?:\.\d+)?)/i);
+  if (readMatch) {
+    console.log('[extractChapterNumber] Found (read pattern):', readMatch[1]);
+    return readMatch[1];
+  }
+  
+  // Pattern 4: /123 at the end (common in some sites)
   const endNumberMatch = url.match(/\/(\d+(?:\.\d+)?)(?:\/|$)/);
-  if (endNumberMatch && parseFloat(endNumberMatch[1]) > 0) {
+  if (endNumberMatch && parseFloat(endNumberMatch[1]) > 0 && parseFloat(endNumberMatch[1]) < 10000) {
+    console.log('[extractChapterNumber] Found (end number):', endNumberMatch[1]);
     return endNumberMatch[1];
   }
   
@@ -42,10 +62,12 @@ export function extractChapterNumber(url: string, title?: string): string | null
   if (title) {
     const titleMatch = title.match(/(?:Chapter|Ch\.?|Episode|Ep\.?)\s+(\d+(?:\.\d+)?)/i);
     if (titleMatch) {
+      console.log('[extractChapterNumber] Found (from title):', titleMatch[1]);
       return titleMatch[1];
     }
   }
   
+  console.log('[extractChapterNumber] No chapter found');
   return null;
 }
 

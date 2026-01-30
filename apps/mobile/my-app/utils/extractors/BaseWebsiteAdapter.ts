@@ -68,6 +68,16 @@ export abstract class BaseWebsiteAdapter {
   }
 
   /**
+   * Specific check for manga detail pages (series pages)
+   * 
+   * @param url - The URL to check
+   * @returns true if this is a series detail page
+   */
+  isMangaDetailPage(url: string): boolean {
+    return this.canHandle(url);
+  }
+
+  /**
    * Validate extracted metadata
    * 
    * Override this to add website-specific validation logic.
@@ -102,8 +112,8 @@ export abstract class BaseWebsiteAdapter {
    * @returns true if this is a chapter page
    */
   isChapterPage(url: string): boolean {
-    // Common patterns for chapter pages
-    return /\/(chapter|ch|episode|ep|read)\/\d+/i.test(url);
+    // Common patterns for chapter pages, handling both /chapter/1 and /chapter-1
+    return /\/(chapter|ch|episode|ep|read)[/-]\d+/i.test(url);
   }
 
   /**

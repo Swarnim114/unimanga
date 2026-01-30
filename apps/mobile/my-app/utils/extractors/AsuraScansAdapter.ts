@@ -20,9 +20,14 @@ export class AsuraScansAdapter extends BaseWebsiteAdapter {
 
   getUrlPatterns(): RegExp[] {
     return [
-      /asuracomic\.net\/series/i,
+      /asuracomic\.net/i,
+      /asuratoon\.com/i,
       /asurascans\./i,
     ];
+  }
+
+  isMangaDetailPage(url: string): boolean {
+    return /\/series\//i.test(url) && !this.isChapterPage(url);
   }
 
   getInjectionScript(): string {
