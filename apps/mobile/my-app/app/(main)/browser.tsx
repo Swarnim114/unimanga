@@ -22,9 +22,14 @@ export default function BrowserScreen() {
 
   // URL params
   const websiteName = params.name as string || 'Browser';
-  const websiteUrl = params.url as string;
+  let websiteUrl = params.url as string;
   const websiteColor = params.color as string || '#6366F1';
   const userMangaId = params.userMangaId as string;
+  
+  // Convert mobile Webtoons URLs to desktop version (more compatible)
+  if (websiteUrl && websiteUrl.includes('m.webtoons.com')) {
+    websiteUrl = websiteUrl.replace('m.webtoons.com', 'www.webtoons.com');
+  }
 
   // Custom hooks for separation of concerns
   const navigation = useWebViewNavigation(webViewRef);
@@ -163,7 +168,13 @@ export default function BrowserScreen() {
       {/* WebView */}
       <WebView
         ref={webViewRef}
-        source={{ uri: websiteUrl }}
+        source={{ 
+          uri: websiteUrl,
+          headers: {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+          }
+        }}
         style={{ flex: 1 }}
         onLoadStart={() => navigation.setLoading(true)}
         onLoadEnd={() => navigation.setLoading(false)}
@@ -171,6 +182,13 @@ export default function BrowserScreen() {
         onMessage={metadata.handleWebViewMessage}
         javaScriptEnabled
         domStorageEnabled
+        userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        thirdPartyCookiesEnabled
+        sharedCookiesEnabled
+        cacheEnabled
+        incognito={false}
+        setSupportMultipleWindows={false}
+        allowsInlineMediaPlayback
       />
 
       {/* Reader Overlay */}

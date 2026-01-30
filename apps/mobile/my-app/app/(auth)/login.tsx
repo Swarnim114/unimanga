@@ -11,12 +11,13 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { authService } from '../../services/auth.service';
+import { useAuthStore } from '../../store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { Toast, useToast } from '../../components/Toast';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const login = useAuthStore((state) => state.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,15 +34,15 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const response = await authService.login(email, password);
-      console.log('Login successful!', response.message);
+      await login(email, password);
+      console.log('Login successful!');
       showToast('Login successful!', 'success');
       setTimeout(() => {
         router.replace('/(main)/home');
       }, 500);
     } catch (error) {
       console.log('Login error:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = typeof error === 'string' ? error : 'Login failed';
       showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
@@ -51,7 +52,7 @@ export default function LoginScreen() {
   return (
     <View className="flex-1 bg-[#1C1C1E]">
       <StatusBar barStyle="light-content" backgroundColor="#1C1C1E" />
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
@@ -70,9 +71,8 @@ export default function LoginScreen() {
             {/* Email Input */}
             <View className="mb-4">
               <Text className="text-gray-400 text-sm mb-2 ml-1">Email</Text>
-              <View className={`bg-[#2C2C2E] rounded-xl ${
-                isEmailFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
-              }`}>
+              <View className={`bg-[#2C2C2E] rounded-xl ${isEmailFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
+                }`}>
                 <TextInput
                   className="text-white px-4 py-4 text-base"
                   placeholder="Enter your email"
@@ -93,9 +93,8 @@ export default function LoginScreen() {
             {/* Password Input */}
             <View className="mb-6">
               <Text className="text-gray-400 text-sm mb-2 ml-1">Password</Text>
-              <View className={`bg-[#2C2C2E] rounded-xl flex-row items-center ${
-                isPasswordFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
-              }`}>
+              <View className={`bg-[#2C2C2E] rounded-xl flex-row items-center ${isPasswordFocused ? 'border-2 border-[#6366F1]' : 'border-2 border-transparent'
+                }`}>
                 <TextInput
                   className="text-white px-4 py-4 text-base flex-1"
                   placeholder="Enter your password"
@@ -135,9 +134,8 @@ export default function LoginScreen() {
 
             {/* Login Button */}
             <TouchableOpacity
-              className={`py-4 rounded-xl items-center ${
-                isLoading ? 'bg-[#4F46E5]/50' : 'bg-[#6366F1]'
-              }`}
+              className={`py-4 rounded-xl items-center ${isLoading ? 'bg-[#4F46E5]/50' : 'bg-[#6366F1]'
+                }`}
               onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.8}
@@ -161,7 +159,7 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      
+
       <Toast
         visible={toast.visible}
         message={toast.message}

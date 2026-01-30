@@ -83,10 +83,19 @@ export function useMetadataExtraction(
   }, [currentUrl, showOverlay]);
 
   const extractMetadata = async (url: string, isManual: boolean = false) => {
+    const adapter = metadataService.getExtractorForUrl(url);
+
+    if (!adapter) {
+      if (isManual) {
+        onUnsupportedWebsite?.();
+      }
+      return false;
+    }
+
     const script = metadataService.getInjectionScript(url);
     if (!script) {
       if (isManual) {
-        onUnsupportedWebsite?.();
+        onExtractionFailed?.();
       }
       return false;
     }
@@ -107,7 +116,7 @@ export function useMetadataExtraction(
     try {
       const messageData = event.nativeEvent.data;
       console.log('[useMetadataExtraction] Received message from WebView');
-      
+
       const metadata = metadataService.parseMetadata(messageData);
       if (metadata) {
         setExtractedMetadata(metadata);
@@ -156,16 +165,16 @@ export function useProgressTracking(userMangaId?: string) {
     progressUpdateTimeoutRef.current = setTimeout(async () => {
       try {
         const chapterNumber = extractChapterNumber(url);
-        
+
         if (chapterNumber) {
           console.log('[useProgressTracking] Updating - Chapter:', chapterNumber);
-          
+
           await apiService.updateMangaProgress(userMangaId, {
             lastReadUrl: url,
             currentChapter: chapterNumber,
             status: 'reading',
           });
-          
+
           console.log('[useProgressTracking] Progress updated successfully');
         }
       } catch (error) {

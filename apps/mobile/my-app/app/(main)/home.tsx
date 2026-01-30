@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StatusBar, ScrollView, ActivityIndicator, Image, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
-import { authService } from '../../services/auth.service';
+import { useAuthStore } from '../../store/authStore';
 import { apiService, Website } from '../../services/api.service';
 import { cleanMangaTitle, formatChapterDisplay } from '../../utils/mangaHelpers';
 import { useLibrary, useMangaActions, useMangaMenu } from '../../hooks/useLibrary';
@@ -9,6 +9,7 @@ import { Toast, useToast } from '../../components/Toast';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const logout = useAuthStore((state) => state.logout);
   const [activeTab, setActiveTab] = useState<'sources' | 'library'>('sources');
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loadingWebsites, setLoadingWebsites] = useState(true);
@@ -50,7 +51,7 @@ export default function HomeScreen() {
 
   const handleLogout = async () => {
     console.log('Logging out...');
-    await authService.logout();
+    await logout();
     router.replace('/(auth)/login');
   };
 
@@ -69,10 +70,10 @@ export default function HomeScreen() {
   const handleOpenManga = (item: typeof library.filteredLibrary[0]) => {
     // Open browser at the last read URL or the manga's main URL
     const urlToOpen = item.lastReadUrl || item.manga.sourceUrl;
-    const websiteInfo = typeof item.manga.sourceWebsite === 'object' 
-      ? item.manga.sourceWebsite 
+    const websiteInfo = typeof item.manga.sourceWebsite === 'object'
+      ? item.manga.sourceWebsite
       : null;
-    
+
     router.push({
       pathname: '/(main)/browser',
       params: {
@@ -106,7 +107,7 @@ export default function HomeScreen() {
   return (
     <View className="flex-1 bg-[#1C1C1E]">
       <StatusBar barStyle="light-content" backgroundColor="#1C1C1E" />
-      
+
       {/* Header */}
       <View className="px-6 pt-12 pb-4">
         <View className="flex-row justify-between items-center mb-2">
@@ -129,28 +130,24 @@ export default function HomeScreen() {
       {/* Tab Switcher */}
       <View className="flex-row px-6 mb-4">
         <TouchableOpacity
-          className={`flex-1 py-3 mr-2 rounded-xl items-center ${
-            activeTab === 'sources' ? 'bg-[#6366F1]' : 'bg-[#2C2C2E]'
-          }`}
+          className={`flex-1 py-3 mr-2 rounded-xl items-center ${activeTab === 'sources' ? 'bg-[#6366F1]' : 'bg-[#2C2C2E]'
+            }`}
           onPress={() => setActiveTab('sources')}
           activeOpacity={0.8}
         >
-          <Text className={`font-semibold ${
-            activeTab === 'sources' ? 'text-white' : 'text-gray-400'
-          }`}>
+          <Text className={`font-semibold ${activeTab === 'sources' ? 'text-white' : 'text-gray-400'
+            }`}>
             Sources
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          className={`flex-1 py-3 ml-2 rounded-xl items-center ${
-            activeTab === 'library' ? 'bg-[#6366F1]' : 'bg-[#2C2C2E]'
-          }`}
+          className={`flex-1 py-3 ml-2 rounded-xl items-center ${activeTab === 'library' ? 'bg-[#6366F1]' : 'bg-[#2C2C2E]'
+            }`}
           onPress={() => setActiveTab('library')}
           activeOpacity={0.8}
         >
-          <Text className={`font-semibold ${
-            activeTab === 'library' ? 'text-white' : 'text-gray-400'
-          }`}>
+          <Text className={`font-semibold ${activeTab === 'library' ? 'text-white' : 'text-gray-400'
+            }`}>
             Library
           </Text>
         </TouchableOpacity>
@@ -166,7 +163,7 @@ export default function HomeScreen() {
             <Text className="text-gray-400 text-sm mb-4">
               Select a source to browse and read manga
             </Text>
-            
+
             {loadingWebsites ? (
               <View className="py-12 items-center">
                 <ActivityIndicator size="large" color="#6366F1" />
@@ -187,7 +184,7 @@ export default function HomeScreen() {
                   activeOpacity={0.8}
                 >
                   <View className="flex-row items-center flex-1">
-                    <View 
+                    <View
                       className="w-12 h-12 rounded-full items-center justify-center mr-4"
                       style={{ backgroundColor: source.color }}
                     >
@@ -219,28 +216,26 @@ export default function HomeScreen() {
             <Text className="text-white text-xl font-bold mb-4">
               My Library
             </Text>
-            
+
             {/* Category Filter Tabs */}
-            <ScrollView 
-              horizontal 
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               className="mb-4"
             >
               {/* All Categories */}
               <TouchableOpacity
-                className={`mr-2 px-4 py-2 rounded-full ${
-                  library.selectedCategory === 'all' 
-                    ? 'bg-[#6366F1]' 
-                    : 'bg-[#2C2C2E]'
-                }`}
+                className={`mr-2 px-4 py-2 rounded-full ${library.selectedCategory === 'all'
+                  ? 'bg-[#6366F1]'
+                  : 'bg-[#2C2C2E]'
+                  }`}
                 onPress={() => library.setSelectedCategory('all')}
                 activeOpacity={0.8}
               >
-                <Text className={`font-semibold text-sm ${
-                  library.selectedCategory === 'all' 
-                    ? 'text-white' 
-                    : 'text-gray-400'
-                }`}>
+                <Text className={`font-semibold text-sm ${library.selectedCategory === 'all'
+                  ? 'text-white'
+                  : 'text-gray-400'
+                  }`}>
                   All ({library.library.length})
                 </Text>
               </TouchableOpacity>
@@ -249,19 +244,17 @@ export default function HomeScreen() {
               {library.categories.map((category) => (
                 <TouchableOpacity
                   key={category._id}
-                  className={`mr-2 px-4 py-2 rounded-full ${
-                    library.selectedCategory === category._id 
-                      ? 'bg-[#6366F1]' 
-                      : 'bg-[#2C2C2E]'
-                  }`}
+                  className={`mr-2 px-4 py-2 rounded-full ${library.selectedCategory === category._id
+                    ? 'bg-[#6366F1]'
+                    : 'bg-[#2C2C2E]'
+                    }`}
                   onPress={() => library.setSelectedCategory(category._id)}
                   activeOpacity={0.8}
                 >
-                  <Text className={`font-semibold text-sm ${
-                    library.selectedCategory === category._id 
-                      ? 'text-white' 
-                      : 'text-gray-400'
-                  }`}>
+                  <Text className={`font-semibold text-sm ${library.selectedCategory === category._id
+                    ? 'text-white'
+                    : 'text-gray-400'
+                    }`}>
                     {category.name} ({library.getCategoryCount(category._id)})
                   </Text>
                 </TouchableOpacity>
@@ -271,7 +264,7 @@ export default function HomeScreen() {
             <Text className="text-gray-400 text-sm mb-4">
               {library.filteredLibrary.length} manga {library.selectedCategory !== 'all' ? 'in this category' : 'in your collection'}
             </Text>
-            
+
             {library.loading ? (
               <View className="py-12 items-center">
                 <ActivityIndicator size="large" color="#6366F1" />
@@ -283,8 +276,8 @@ export default function HomeScreen() {
                   {library.selectedCategory !== 'all' ? 'No manga in this category' : 'Your library is empty'}
                 </Text>
                 <Text className="text-gray-500 text-sm text-center">
-                  {library.selectedCategory !== 'all' 
-                    ? 'Add manga to this category or select another' 
+                  {library.selectedCategory !== 'all'
+                    ? 'Add manga to this category or select another'
                     : 'Browse sources and add manga to get started'}
                 </Text>
               </View>
@@ -312,7 +305,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                     )}
-                    
+
                     {/* Manga Info */}
                     <View className="flex-1 justify-between">
                       <View>
@@ -323,7 +316,7 @@ export default function HomeScreen() {
                           {item.category.name}
                         </Text>
                       </View>
-                      
+
                       <View>
                         <Text className="text-gray-400 text-xs">
                           {formatChapterDisplay(item.currentChapter)}
@@ -336,7 +329,7 @@ export default function HomeScreen() {
             )}
           </View>
         )}
-        
+
         <View className="h-8" />
       </ScrollView>
 
@@ -503,7 +496,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-      
+
       <Toast
         visible={toast.visible}
         message={toast.message}
