@@ -23,7 +23,7 @@ A modern manga reading and library management application with a production-grad
 
 ---
 
-## 🎯 Overview
+## 🎯 Overview..
 
 UniManga is a full-stack application consisting of:
 - **Mobile App**: React Native (Expo) mobile application for iOS and Android
