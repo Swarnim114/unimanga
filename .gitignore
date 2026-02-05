@@ -6,9 +6,13 @@ BACKEND_REFACTORING_COMPLETE.md
 # Node modules
 node_modules/
 
-# Environment variables
+# Environment variables (all variants, all directories)
 .env
-.env.local
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
 
 # IDE
 .vscode/
