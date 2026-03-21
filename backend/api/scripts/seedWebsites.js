@@ -6,13 +6,7 @@ import Website from '../models/website.model.js';
 dotenv.config();
 
 const websites = [
-  { 
-    name: 'Webtoons', 
-    url: 'https://www.webtoons.com', 
-    language: 'EN', 
-    color: '#00D564',
-    isActive: true 
-  },
+
   { 
     name: 'AsuraScans', 
     url: 'https://asuracomic.net', 
@@ -48,14 +42,14 @@ const seedWebsites = async () => {
 
     // Insert preconfigured websites
     const insertedWebsites = await Website.insertMany(websites);
-    console.log(`✅ Successfully seeded ${insertedWebsites.length} websites:`);
+    console.log(`Successfully seeded ${insertedWebsites.length} websites:`);
     insertedWebsites.forEach(site => {
       console.log(`   - ${site.name} (${site.url})`);
     });
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error seeding websites:', error.message);
+    console.error(' Error seeding websites:', error.message);
     process.exit(1);
   }
 };
